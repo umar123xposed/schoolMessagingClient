@@ -20,7 +20,7 @@ class SocketManager {
     this.currentToken = token;
     this.isReady = false;
 
-    const socketUrl = process.env.SOCKET_URL || process.env.SERVER_URL?.replace('/v1', '') || 'http://localhost:3000';
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_SERVER_URL?.replace('/v1', '') || 'http://localhost:3000';
 
     this.socket = io(socketUrl, {
       auth: { token },
