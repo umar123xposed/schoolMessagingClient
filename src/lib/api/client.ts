@@ -1,7 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const getBaseUrl = (): string => {
-  const envUrl = process.env.SERVER_URL || 'http://localhost:3000/v1';
+  const envUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000/v1';
   if (!envUrl.includes('/v1')) {
     return `${envUrl.replace(/\/+$/, '')}/v1`;
   }
