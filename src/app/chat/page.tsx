@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useChatStore } from '@/stores/useChatStore';
@@ -17,9 +17,11 @@ import { ChatHeader } from '@/components/chat/ChatHeader';
 import { MessageList } from '@/components/chat/MessageList';
 import { ChatComposer } from '@/components/chat/composer/ChatComposer';
 import { ChatInfoDrawer } from '@/components/chat/info/ChatInfoDrawer';
+import { ForwardMessageModal } from '@/components/chat/ForwardMessageModal';
 
 import { MessageSquare, Lock } from 'lucide-react';
-import { Conversation } from '@/types';
+import { Conversation, Message } from '@/types';
+import { useUnreadStore } from '@/stores/useUnreadStore';
 
 export default function ChatPage() {
   return (
@@ -44,6 +46,7 @@ function ChatApp() {
     isLoading: isLoadingConversations,
     updateLabels,
     deleteGroup,
+    markAsReadSync,
   } = useConversations();
 
   const {
@@ -54,7 +57,31 @@ function ChatApp() {
     deleteMessage,
   } = useMessages(activeConversationId);
 
+  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
+
   const isStudent = user?.role === 'student';
+  const markAsRead = useUnreadStore((s) => s.markAsRead);
+  const syncWithConversations = useUnreadStore((s) => s.syncWithConversations);
+
+  // Sync unread status whenever conversations change
+  useEffect(() => {
+    if (conversations.length > 0) {
+      syncWithConversations(conversations, user?.id, activeConversationId);
+    }
+  }, [conversations, user?.id, activeConversationId, syncWithConversations]);
+
+  // When active conversation opens, mark it as read locally and on server
+  useEffect(() => {
+    if (activeConversationId) {
+      markAsRead(activeConversationId);
+      if (user?.role === 'agent' || user?.role === 'super_admin') {
+        const conv = conversations.find((c) => c.id === activeConversationId);
+        if (conv && conv.type === 'student_support' && (conv.unreadCount || 0) > 0) {
+          markAsReadSync(activeConversationId);
+        }
+      }
+    }
+  }, [activeConversationId, markAsRead, markAsReadSync, conversations, user?.role]);
 
   // Automatically select the student's single conversation
   useEffect(() => {
@@ -75,6 +102,10 @@ function ChatApp() {
 
   const handleSelectConversation = (conv: Conversation) => {
     setActiveConversation(conv);
+    markAsRead(conv.id);
+    if ((user?.role === 'agent' || user?.role === 'super_admin') && conv.type === 'student_support' && (conv.unreadCount || 0) > 0) {
+      markAsReadSync(conv.id);
+    }
   };
 
   const handleBackToSidebar = () => {
@@ -144,6 +175,7 @@ function ChatApp() {
                 conversation={activeConversation}
                 onPinMessage={pinMessage}
                 onDeleteMessage={deleteMessage}
+                onForwardMessage={setForwardingMessage}
                 searchQuery={searchInChatQuery}
               />
               <ChatComposer
@@ -178,6 +210,13 @@ function ChatApp() {
           </div>
         )}
       </div>
+
+      {/* Forward Message Modal */}
+      <ForwardMessageModal
+        isOpen={!!forwardingMessage}
+        message={forwardingMessage}
+        onClose={() => setForwardingMessage(null)}
+      />
     </div>
   );
 }

@@ -1,19 +1,26 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { Message, Conversation } from '@/types';
 import { MessageBubble } from './MessageBubble';
 import { PinnedBanner } from './PinnedBanner';
 import { formatMessageDividerDate, safeParseDate, extractDateFromObjectId } from '@/lib/utils/formatters';
 import { MessageSquare, ShieldAlert } from 'lucide-react';
-import { isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 
 interface MessageListProps {
   messages: Message[];
   conversation: Conversation;
   onPinMessage?: (messageId: string, isPinned: boolean) => void;
   onDeleteMessage?: (messageId: string) => void;
+  onForwardMessage?: (message: Message) => void;
   searchQuery?: string;
+}
+
+interface DayGroup {
+  dateKey: string;
+  dividerText: string;
+  messages: Message[];
 }
 
 export function MessageList({
@@ -21,6 +28,7 @@ export function MessageList({
   conversation,
   onPinMessage,
   onDeleteMessage,
+  onForwardMessage,
   searchQuery = '',
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -39,9 +47,9 @@ export function MessageList({
     const el = document.getElementById(`msg-${messageId}`);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('ring-2', 'ring-[#00a884]');
+      el.classList.add('ring-2', 'ring-[#00a884]', 'ring-offset-2', 'ring-offset-[#0b141a]');
       setTimeout(() => {
-        el.classList.remove('ring-2', 'ring-[#00a884]');
+        el.classList.remove('ring-2', 'ring-[#00a884]', 'ring-offset-2', 'ring-offset-[#0b141a]');
       }, 2000);
     }
   };
@@ -60,7 +68,7 @@ export function MessageList({
     .map((m) => {
       const msgId = m.id || m._id || '';
       const rawDate = m.createdAt || m.timestamp || m.created_at || m.updatedAt || m.date;
-      const parsedDate = safeParseDate(rawDate) || extractDateFromObjectId(msgId) || new Date();
+      const parsedDate = safeParseDate(rawDate, msgId) || extractDateFromObjectId(msgId) || new Date();
       return {
         ...m,
         id: msgId,
@@ -82,6 +90,31 @@ export function MessageList({
           m.attachment?.fileName?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : sortedMessages;
+
+  // Group messages chronologically by calendar day to guarantee clean headers and prevent stacking
+  const dayGroups = useMemo(() => {
+    const groups: DayGroup[] = [];
+    const groupMap = new Map<string, DayGroup>();
+
+    filteredMessages.forEach((msg) => {
+      const date = safeParseDate(msg.createdAt, msg.id) || extractDateFromObjectId(msg.id) || new Date();
+      const dateKey = format(date, 'yyyy-MM-dd');
+
+      let group = groupMap.get(dateKey);
+      if (!group) {
+        group = {
+          dateKey,
+          dividerText: formatMessageDividerDate(date, msg.id),
+          messages: [],
+        };
+        groupMap.set(dateKey, group);
+        groups.push(group);
+      }
+      group.messages.push(msg);
+    });
+
+    return groups;
+  }, [filteredMessages]);
 
   return (
     <div className="relative flex-1 flex flex-col min-h-0 bg-[#0b141a]">
@@ -115,7 +148,7 @@ export function MessageList({
           </div>
         </div>
 
-        {filteredMessages.length === 0 ? (
+        {dayGroups.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-[#8696a0] text-center space-y-2">
             <MessageSquare className="w-8 h-8 opacity-40" />
             <p className="text-sm">
@@ -123,37 +156,31 @@ export function MessageList({
             </p>
           </div>
         ) : (
-          filteredMessages.map((msg, index) => {
-            const currentDate = safeParseDate(msg.createdAt, msg.id) || new Date();
-            const prevDate =
-              index > 0
-                ? safeParseDate(filteredMessages[index - 1].createdAt, filteredMessages[index - 1].id) || new Date()
-                : null;
-            const isNewDay = index === 0 || (!!prevDate && !isSameDay(currentDate, prevDate));
-            const dividerText = isNewDay ? formatMessageDividerDate(currentDate, msg.id) : '';
+          dayGroups.map((group) => (
+            <div key={group.dateKey} className="relative">
+              {/* Day Divider Pill */}
+              <div className="flex justify-center my-3 select-none">
+                <span className="px-3 py-1 rounded-lg bg-[#182229] border border-[#222e35] text-[11px] font-semibold text-[#8696a0] shadow-sm uppercase tracking-wider">
+                  {group.dividerText}
+                </span>
+              </div>
 
-            return (
-              <React.Fragment key={msg.id || `msg-${index}`}>
-                {/* Date Header Pill */}
-                {isNewDay && dividerText && (
-                  <div className="flex justify-center my-3 select-none sticky top-2 z-10">
-                    <span className="px-3 py-1 rounded-lg bg-[#182229] border border-[#222e35] text-[11px] font-semibold text-[#8696a0] shadow-sm uppercase tracking-wider">
-                      {dividerText}
-                    </span>
+              {/* Messages for this Day */}
+              <div className="space-y-1">
+                {group.messages.map((msg) => (
+                  <div id={`msg-${msg.id}`} key={msg.id} className="transition-all rounded-xl">
+                    <MessageBubble
+                      message={msg}
+                      isGroup={isGroup}
+                      onPin={onPinMessage}
+                      onDelete={onDeleteMessage}
+                      onForward={onForwardMessage}
+                    />
                   </div>
-                )}
-
-                <div id={`msg-${msg.id}`} className="transition-all rounded-xl">
-                  <MessageBubble
-                    message={msg}
-                    isGroup={isGroup}
-                    onPin={onPinMessage}
-                    onDelete={onDeleteMessage}
-                  />
-                </div>
-              </React.Fragment>
-            );
-          })
+                ))}
+              </div>
+            </div>
+          ))
         )}
 
         <div ref={bottomRef} className="h-1" />

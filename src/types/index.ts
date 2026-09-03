@@ -48,6 +48,7 @@ export interface Conversation {
   lastMessageAt?: string;
   lastMessage?: Message;
   unreadCount?: number;
+  lastReadAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -85,6 +86,8 @@ export interface Message {
   broadcastGroupId?: string;
   createdAt: string;
   updatedAt?: string;
+  status?: 'sending' | 'sent' | 'delivered' | 'error';
+  tempId?: string;
 }
 
 export interface SendMessagePayload {

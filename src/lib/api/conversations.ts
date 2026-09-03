@@ -48,4 +48,9 @@ export const conversationsApi = {
     });
     return data;
   },
+
+  markConversationAsRead: async (id: string): Promise<Conversation> => {
+    const { data } = await apiClient.patch<Conversation>(`/conversations/${id}/read`);
+    return data;
+  },
 };

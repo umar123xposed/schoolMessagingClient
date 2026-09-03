@@ -3,6 +3,7 @@
 import { Conversation } from '@/types';
 import { useChatStore } from '@/stores/useChatStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useUnreadStore } from '@/stores/useUnreadStore';
 import { useUserMap } from '@/hooks/useUserMap';
 import { resolveConversationDetails } from '@/lib/utils/conversation';
 import { ConversationItem } from './ConversationItem';
@@ -21,6 +22,7 @@ export function ConversationList({
 }: ConversationListProps) {
   const { user } = useAuthStore();
   const userMap = useUserMap();
+  const unreadCounts = useUnreadStore((s) => s.unreadCounts);
   const {
     activeConversationId,
     searchQuery,
@@ -33,6 +35,11 @@ export function ConversationList({
     // Tab filter
     if (activeTab === 'groups' && c.type !== 'agent_group') {
       return false;
+    }
+
+    if (activeTab === 'unread') {
+      const count = unreadCounts[c.id] ?? (c.unreadCount || 0);
+      if (count <= 0) return false;
     }
 
     // Label filter

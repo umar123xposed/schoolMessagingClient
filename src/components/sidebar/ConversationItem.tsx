@@ -3,6 +3,7 @@
 import { Conversation, Label } from '@/types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useChatStore } from '@/stores/useChatStore';
+import { useUnreadStore } from '@/stores/useUnreadStore';
 import { useUserMap } from '@/hooks/useUserMap';
 import { useLabelsMap } from '@/hooks/useLabelsMap';
 import { resolveConversationDetails } from '@/lib/utils/conversation';
@@ -20,6 +21,8 @@ interface ConversationItemProps {
 export function ConversationItem({ conversation, isActive, onClick }: ConversationItemProps) {
   const { user } = useAuthStore();
   const { typingUsers } = useChatStore();
+  const storeCount = useUnreadStore((s) => s.unreadCounts[conversation.id]);
+  const unreadCount = typeof storeCount === 'number' ? storeCount : (conversation.unreadCount || 0);
   const userMap = useUserMap();
   const { labelsMap } = useLabelsMap();
 
@@ -115,7 +118,11 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
           <span
             className={cn(
               'text-[11px] whitespace-nowrap',
-              isTyping ? 'text-[#00a884] font-semibold' : 'text-[#8696a0]'
+              isTyping
+                ? 'text-[#00a884] font-semibold'
+                : unreadCount > 0
+                  ? 'text-[#00a884] font-medium'
+                  : 'text-[#8696a0]'
             )}
           >
             {formatWhatsAppChatDate(conversation.lastMessageAt || conversation.createdAt)}
@@ -142,11 +149,16 @@ export function ConversationItem({ conversation, isActive, onClick }: Conversati
           </div>
         )}
 
-        {/* Row 3: Message preview */}
+        {/* Row 3: Message preview + Unread Count Badge */}
         <div className="flex items-center justify-between gap-2 mt-0.5">
           <div className="text-xs text-[#8696a0] truncate flex-1 flex items-center gap-1">
             {renderLastMessageSnippet()}
           </div>
+          {unreadCount > 0 && (
+            <span className="min-w-[19px] h-[19px] px-1.5 rounded-full bg-[#00a884] text-[#111b21] text-[11px] font-bold flex items-center justify-center shadow flex-shrink-0">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </div>
       </div>
     </div>

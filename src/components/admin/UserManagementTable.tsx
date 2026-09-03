@@ -8,7 +8,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/common/Button';
 import { User, UserRole } from '@/types';
-import { formatWhatsAppChatDate } from '@/lib/utils/formatters';
+import { formatTableDate } from '@/lib/utils/formatters';
 import { Search, UserPlus, Trash2, Shield, UserCheck, GraduationCap, X } from 'lucide-react';
 
 export function UserManagementTable() {
@@ -173,8 +173,8 @@ export function UserManagementTable() {
                         <span className="text-[#8696a0]">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-[#8696a0]">
-                      {formatWhatsAppChatDate(u.createdAt)}
+                    <td className="px-4 py-3 text-[#8696a0] whitespace-nowrap">
+                      {formatTableDate(u.createdAt, u.id)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {u.id !== currentUser?.id && (
