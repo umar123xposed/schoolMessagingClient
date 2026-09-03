@@ -6,6 +6,8 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useChatStore } from '@/stores/useChatStore';
 import { socketManager } from '@/lib/socket/socketManager';
 import { soundEffects } from '@/lib/utils/sound';
+import { useUnreadStore } from '@/stores/useUnreadStore';
+import { conversationsApi } from '@/lib/api/conversations';
 import { Message, Conversation } from '@/types';
 
 export function useSocket() {
@@ -41,10 +43,21 @@ export function useSocket() {
         const conversationId = message.conversationId;
         if (!conversationId) return;
 
-        // Play audio notification if not sent by current user
+        // Play audio notification and update unread count if not sent by current user
         const senderId = typeof message.senderId === 'string' ? message.senderId : message.senderId?.id;
         if (senderId !== user?.id) {
           soundEffects.playReceived();
+          if (conversationId === activeConversationId) {
+            useUnreadStore.getState().markAsRead(conversationId);
+            if (user?.role === 'agent' || user?.role === 'super_admin') {
+              conversationsApi.markConversationAsRead(conversationId).catch(() => {});
+            }
+          } else {
+            useUnreadStore.getState().incrementUnread(conversationId);
+          }
+        } else {
+          // Staff reply automatically clears unread count
+          useUnreadStore.getState().markAsRead(conversationId);
         }
 
         // Update messages cache for this conversation
@@ -67,7 +80,7 @@ export function useSocket() {
           };
         });
 
-        // Update conversations cache (re-order by lastMessageAt)
+        // Update conversations cache (re-order by lastMessageAt and update unreadCount)
         queryClient.setQueryData(['conversations'], (oldData: unknown) => {
           if (!oldData) return oldData;
           const data = oldData as { results: Conversation[]; page: number; limit: number; totalPages: number; totalResults: number };
@@ -76,10 +89,16 @@ export function useSocket() {
           const updatedList = [...data.results];
 
           if (existingIndex > -1) {
+            const currentUnread = updatedList[existingIndex].unreadCount || 0;
+            const newUnread = (senderId === user?.id || conversationId === activeConversationId)
+              ? 0
+              : currentUnread + 1;
+
             const updatedConv: Conversation = {
               ...updatedList[existingIndex],
               lastMessageAt: message.createdAt,
               lastMessage: message,
+              unreadCount: newUnread,
             };
             updatedList.splice(existingIndex, 1);
             updatedList.unshift(updatedConv);
@@ -205,7 +224,7 @@ export function useSocket() {
       unsubTypingStart();
       unsubTypingStop();
     };
-  }, [queryClient, user?.id, activeConversationId, setTypingUser, setPresence]);
+  }, [queryClient, user?.id, user?.role, activeConversationId, setTypingUser, setPresence]);
 
   return { isSocketReady };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Message } from '@/types';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
@@ -8,7 +8,7 @@ import { useUserMap } from '@/hooks/useUserMap';
 import { formatWhatsAppTime } from '@/lib/utils/formatters';
 import { getSenderColorClass } from '@/lib/utils/conversation';
 import { cn } from '@/lib/utils/cn';
-import { CheckCheck, Pin, Megaphone, MoreVertical, Trash2, Copy } from 'lucide-react';
+import { CheckCheck, Check, AlertCircle, Forward, Pin, Megaphone, MoreVertical, Trash2, Copy } from 'lucide-react';
 import { Dropdown, DropdownItem } from '@/components/common/Dropdown';
 
 import { TextBubble } from './bubbles/TextBubble';
@@ -24,9 +24,11 @@ interface MessageBubbleProps {
   isGroup?: boolean;
   onPin?: (messageId: string, isPinned: boolean) => void;
   onDelete?: (messageId: string) => void;
+  onForward?: (message: Message) => void;
 }
 
-export function MessageBubble({ message, onPin, onDelete }: MessageBubbleProps) {
+export function MessageBubble({ message, onPin, onDelete, onForward }: MessageBubbleProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user } = useAuthStore();
   const { addToast } = useUIStore();
   const userMap = useUserMap();
@@ -69,6 +71,18 @@ export function MessageBubble({ message, onPin, onDelete }: MessageBubbleProps) 
       label: 'Copy text',
       icon: <Copy className="w-4 h-4" />,
       onClick: handleCopy,
+    });
+  }
+
+  const isAgentOrAdmin = user?.role === 'agent' || user?.role === 'super_admin';
+  const canForward = !message.isDeleted && isAgentOrAdmin && !!onForward;
+
+  if (canForward) {
+    menuItems.push({
+      id: 'forward',
+      label: 'Forward message',
+      icon: <Forward className="w-4 h-4" />,
+      onClick: () => onForward(message),
     });
   }
 
@@ -131,18 +145,23 @@ export function MessageBubble({ message, onPin, onDelete }: MessageBubbleProps) 
 
   return (
     <div
-      className={cn(
-        'group relative flex w-full my-1 animate-fade-in hover:z-30 focus-within:z-30',
-        isOutgoing ? 'justify-end' : 'justify-start'
-      )}
+      id={`msg-${message.id}`}
+      className={cn('group relative flex flex-col mb-1 select-text transition-all duration-300', {
+        'items-end': isOutgoing,
+        'items-start': !isOutgoing,
+      })}
     >
       <div
         className={cn(
-          'relative max-w-[85%] sm:max-w-[70%] md:max-w-[60%] rounded-2xl px-3 py-2 shadow-md transition-shadow hover:shadow-lg',
-          isOutgoing
-            ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-xs'
-            : 'bg-[#202c33] text-[#e9edef] rounded-tl-xs',
-          message.isPinned && 'ring-1 ring-amber-400/40'
+          'relative max-w-[85%] sm:max-w-[75%] md:max-w-[65%] rounded-lg px-3 pt-2 pb-1.5 shadow-sm text-sm break-words',
+          {
+            // Outgoing Bubble: Dark Pine Green
+            'bg-[#005c4b] text-[#e9edef] rounded-tr-none': isOutgoing,
+            // Incoming Bubble: Slate Charcoal
+            'bg-[#202c33] text-[#e9edef] rounded-tl-none': !isOutgoing,
+            // Pinned indicator border glow
+            'ring-1 ring-[#00a884]/40': message.isPinned,
+          }
         )}
       >
         {/* Pinned Marker / Broadcast Header */}
@@ -177,8 +196,20 @@ export function MessageBubble({ message, onPin, onDelete }: MessageBubbleProps) 
             {formatWhatsAppTime(message.createdAt, message.id)}
           </span>
           {isOutgoing && (
-            <span className="text-[#53bdeb] ml-0.5 inline-flex items-center">
-              <CheckCheck className="w-3.5 h-3.5" />
+            <span className="ml-0.5 inline-flex items-center">
+              {message.status === 'error' ? (
+                <span className="text-red-400" title="Failed to send">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                </span>
+              ) : message.status === 'sending' || message.id.startsWith('optimistic-') ? (
+                <span className="text-[#8696a0]" title="Sending...">
+                  <Check className="w-3.5 h-3.5" />
+                </span>
+              ) : (
+                <span className="text-[#53bdeb]" title="Delivered">
+                  <CheckCheck className="w-3.5 h-3.5" />
+                </span>
+              )}
             </span>
           )}
         </div>
@@ -187,7 +218,8 @@ export function MessageBubble({ message, onPin, onDelete }: MessageBubbleProps) 
         {menuItems.length > 0 && (
           <div
             className={cn(
-              'absolute top-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20 right-1.5'
+              'absolute top-1.5 transition-opacity z-20 right-1.5',
+              isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
             )}
           >
             <Dropdown
@@ -195,12 +227,14 @@ export function MessageBubble({ message, onPin, onDelete }: MessageBubbleProps) 
                 <button
                   type="button"
                   className="rounded-full p-1 text-[#8696a0] hover:text-[#e9edef] hover:bg-black/40 backdrop-blur-sm transition-colors"
+                  aria-label="Message options"
                 >
                   <MoreVertical className="w-3.5 h-3.5" />
                 </button>
               }
               items={menuItems}
               align={isOutgoing ? 'right' : 'left'}
+              onOpenChange={setIsMenuOpen}
             />
           </div>
         )}

@@ -69,6 +69,41 @@ export function useConversations() {
     },
   });
 
+  const markAsReadMutation = useMutation({
+    mutationFn: (id: string) => conversationsApi.markConversationAsRead(id),
+    onMutate: async (id: string) => {
+      // Optimistically clear unread badge in cache
+      queryClient.setQueryData(['conversations'], (oldData: unknown) => {
+        if (!oldData) return oldData;
+        const data = oldData as { results: Conversation[] };
+        return {
+          ...data,
+          results: data.results.map((c) =>
+            c.id === id ? { ...c, unreadCount: 0, lastReadAt: new Date().toISOString() } : c
+          ),
+        };
+      });
+      queryClient.setQueryData(['conversation', id], (oldConv: Conversation | undefined) => {
+        if (!oldConv) return oldConv;
+        return { ...oldConv, unreadCount: 0, lastReadAt: new Date().toISOString() };
+      });
+    },
+    onSuccess: (updatedConv) => {
+      if (!updatedConv) return;
+      queryClient.setQueryData(['conversations'], (oldData: unknown) => {
+        if (!oldData) return oldData;
+        const data = oldData as { results: Conversation[] };
+        return {
+          ...data,
+          results: data.results.map((c) =>
+            c.id === updatedConv.id ? { ...c, ...updatedConv, unreadCount: 0 } : c
+          ),
+        };
+      });
+      queryClient.setQueryData(['conversation', updatedConv.id], updatedConv);
+    },
+  });
+
   return {
     conversations: conversationsQuery.data?.results || [],
     isLoading: conversationsQuery.isLoading,
@@ -81,5 +116,7 @@ export function useConversations() {
     deleteGroup: deleteGroupMutation.mutateAsync,
     isDeletingGroup: deleteGroupMutation.isPending,
     updateLabels: updateLabelsMutation.mutateAsync,
+    markAsRead: markAsReadMutation.mutateAsync,
+    markAsReadSync: markAsReadMutation.mutate,
   };
 }

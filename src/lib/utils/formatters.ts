@@ -99,6 +99,20 @@ export function formatWhatsAppChatDate(
   }
 }
 
+export function formatTableDate(
+  dateInput?: string | Date | number | null,
+  fallbackId?: string | null
+): string {
+  const date = safeParseDate(dateInput, fallbackId) || extractDateFromObjectId(fallbackId);
+  if (!date) return '—';
+
+  try {
+    return format(date, 'MMM d, yyyy');
+  } catch {
+    return '—';
+  }
+}
+
 export function formatMessageDividerDate(
   dateInput?: string | Date | number | null,
   fallbackId?: string | null
