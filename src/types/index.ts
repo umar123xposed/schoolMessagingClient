@@ -88,6 +88,7 @@ export interface Message {
   updatedAt?: string;
   status?: 'sending' | 'sent' | 'delivered' | 'error';
   tempId?: string;
+  uploadProgress?: number;
 }
 
 export interface SendMessagePayload {

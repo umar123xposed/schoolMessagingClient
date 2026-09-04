@@ -16,6 +16,13 @@ import { MultiSendModal } from './MultiSendModal';
 interface ChatComposerProps {
   conversationId: string;
   onSendMessage: (payload: SendMessagePayload) => Promise<unknown>;
+  onSendMediaMessage?: (payload: {
+    contentType: MessageContentType;
+    file: File | Blob;
+    fileName?: string;
+    text?: string;
+    duration?: number;
+  }) => Promise<unknown>;
   onSendMultipleMessages: (payloads: SendMessagePayload[]) => Promise<unknown>;
   disabled?: boolean;
 }
@@ -23,6 +30,7 @@ interface ChatComposerProps {
 export function ChatComposer({
   conversationId,
   onSendMessage,
+  onSendMediaMessage,
   onSendMultipleMessages,
   disabled = false,
 }: ChatComposerProps) {
@@ -112,24 +120,41 @@ export function ChatComposer({
   };
 
   const handleFileSelected = async (file: File, contentType: MessageContentType) => {
+    const currentText = text.trim();
+    setText('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+
+    if (onSendMediaMessage) {
+      try {
+        await onSendMediaMessage({
+          contentType,
+          file,
+          fileName: file.name,
+          text: currentText || undefined,
+        });
+      } catch (err: unknown) {
+        const errorMsg =
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Upload failed. Please check file type and size.';
+        addToast({ type: 'error', title: 'Attachment Failed', message: errorMsg });
+      }
+      return;
+    }
+
+    // Fallback if onSendMediaMessage not supplied
     setIsUploading(true);
     setUploadProgress(0);
 
     try {
-      // Step 1: Upload file to /v1/uploads
       const attachment = await uploadsApi.uploadFile(contentType, file, file.name, (progress) => {
         setUploadProgress(progress);
       });
 
-      // Step 2: Send message with attachment reference
       await onSendMessage({
         contentType,
         attachment,
-        text: text.trim() || undefined,
+        text: currentText || undefined,
       });
-
-      setText('');
-      if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } catch (err: unknown) {
       const errorMsg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -142,16 +167,37 @@ export function ChatComposer({
   };
 
   const handleSendVoiceNote = async (blob: Blob) => {
-    setIsUploading(true);
     const recordedDuration = recorder.recordingDuration;
+    if (onSendMediaMessage) {
+      try {
+        await onSendMediaMessage({
+          contentType: 'voice_note',
+          file: blob,
+          fileName: `voice_note_${Date.now()}.webm`,
+          duration: recordedDuration > 0 ? recordedDuration : undefined,
+        });
+      } catch (err: unknown) {
+        const errorMsg =
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Failed to upload voice note';
+        addToast({ type: 'error', message: errorMsg });
+      }
+      return;
+    }
+
+    // Fallback
+    setIsUploading(true);
     try {
-      const uploadedAttachment = await uploadsApi.uploadFile('voice_note', blob, `voice_note_${Date.now()}.webm`);
+      const uploadedAttachment = await uploadsApi.uploadFile(
+        'voice_note',
+        blob,
+        `voice_note_${Date.now()}.webm`,
+        undefined,
+        recordedDuration > 0 ? recordedDuration : undefined
+      );
       await onSendMessage({
         contentType: 'voice_note',
-        attachment: {
-          ...uploadedAttachment,
-          duration: recordedDuration > 0 ? recordedDuration : undefined,
-        },
+        attachment: uploadedAttachment,
       });
     } catch (err: unknown) {
       const errorMsg =
@@ -192,11 +238,8 @@ export function ChatComposer({
 
       {/* Uploading Progress Indicator */}
       {isUploading && (
-        <div className="absolute -top-9 left-0 right-0 bg-[#111b21] px-4 py-1.5 border-t border-[#222e35] flex items-center justify-between text-xs text-[#8696a0] animate-slide-down">
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#00a884]" />
-            <span>Uploading attachment... {uploadProgress > 0 && `${uploadProgress}%`}</span>
-          </div>
+        <div className="absolute -top-6 left-0 right-0 bg-[#111b21] px-4 py-1 border-t border-[#222e35] flex items-center justify-between text-xs text-[#8696a0] animate-slide-down">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#00a884]" />
           <div className="w-28 bg-[#202c33] h-1.5 rounded-full overflow-hidden">
             <div
               className="bg-[#00a884] h-full transition-all duration-150"

@@ -116,27 +116,65 @@ export function MessageBubble({ message, onPin, onDelete, onForward }: MessageBu
         return <TextBubble text={message.text} isOutgoing={isOutgoing} />;
       case 'image':
         return message.attachment ? (
-          <ImageBubble attachment={message.attachment} text={message.text} isOutgoing={isOutgoing} />
+          <ImageBubble
+            attachment={message.attachment}
+            text={message.text}
+            isOutgoing={isOutgoing}
+            uploadProgress={message.uploadProgress}
+            status={message.status}
+          />
         ) : null;
       case 'audio':
         return message.attachment ? (
-          <AudioBubble attachment={message.attachment} isVoiceNote={false} isOutgoing={isOutgoing} text={message.text} />
+          <AudioBubble
+            attachment={message.attachment}
+            isVoiceNote={false}
+            isOutgoing={isOutgoing}
+            text={message.text}
+            uploadProgress={message.uploadProgress}
+            status={message.status}
+          />
         ) : null;
       case 'voice_note':
         return message.attachment ? (
-          <AudioBubble attachment={message.attachment} isVoiceNote={true} isOutgoing={isOutgoing} text={message.text} />
+          <AudioBubble
+            attachment={message.attachment}
+            isVoiceNote={true}
+            isOutgoing={isOutgoing}
+            text={message.text}
+            uploadProgress={message.uploadProgress}
+            status={message.status}
+          />
         ) : null;
       case 'video':
         return message.attachment ? (
-          <VideoBubble attachment={message.attachment} text={message.text} isOutgoing={isOutgoing} />
+          <VideoBubble
+            attachment={message.attachment}
+            text={message.text}
+            isOutgoing={isOutgoing}
+            uploadProgress={message.uploadProgress}
+            status={message.status}
+          />
         ) : null;
       case 'pdf':
         return message.attachment ? (
-          <PdfBubble attachment={message.attachment} text={message.text} isOutgoing={isOutgoing} />
+          <PdfBubble
+            attachment={message.attachment}
+            text={message.text}
+            isOutgoing={isOutgoing}
+            uploadProgress={message.uploadProgress}
+            status={message.status}
+          />
         ) : null;
       case 'file':
         return message.attachment ? (
-          <FileBubble attachment={message.attachment} text={message.text} isOutgoing={isOutgoing} />
+          <FileBubble
+            attachment={message.attachment}
+            text={message.text}
+            isOutgoing={isOutgoing}
+            uploadProgress={message.uploadProgress}
+            status={message.status}
+          />
         ) : null;
       default:
         return <TextBubble text={message.text} isOutgoing={isOutgoing} />;

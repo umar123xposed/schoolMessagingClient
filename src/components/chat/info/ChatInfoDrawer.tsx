@@ -35,7 +35,7 @@ export function ChatInfoDrawer({
   const labelIds = (conversation.labels || []).map((l) => (typeof l === 'string' ? l : l.id));
 
   return (
-    <div className="w-80 lg:w-96 flex-shrink-0 bg-[#111b21] border-l border-[#222e35] flex flex-col h-full overflow-y-auto animate-slide-left z-30">
+    <div className="fixed inset-y-0 right-0 w-full sm:w-80 lg:w-96 lg:relative flex-shrink-0 bg-[#111b21] border-l border-[#222e35] flex flex-col h-full overflow-y-auto animate-slide-left z-40">
       {/* Drawer Header */}
       <div className="flex items-center justify-between px-5 py-4 bg-[#202c33] border-b border-[#222e35]">
         <h3 className="text-sm font-semibold text-[#e9edef]">
