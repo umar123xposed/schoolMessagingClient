@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { templatesApi } from '@/lib/api/templates';
 import { Template } from '@/types';
-import { Zap, Globe, User as UserIcon } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 interface TemplatePickerProps {
   query: string;
@@ -66,17 +66,6 @@ export function TemplatePicker({ query, onSelect, onClose }: TemplatePickerProps
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-xs text-[#e9edef] truncate">{template.content}</p>
-              <div className="flex items-center gap-1 mt-0.5 text-[10px] text-[#8696a0]">
-                {template.isShared ? (
-                  <>
-                    <Globe className="w-2.5 h-2.5" /> Shared
-                  </>
-                ) : (
-                  <>
-                    <UserIcon className="w-2.5 h-2.5" /> Personal
-                  </>
-                )}
-              </div>
             </div>
           </button>
         ))}

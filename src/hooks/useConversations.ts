@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { conversationsApi, CreateGroupPayload, UpdateGroupPayload } from '@/lib/api/conversations';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -22,9 +23,10 @@ export function useConversations() {
       queryClient.setQueryData(['conversations'], (oldData: unknown) => {
         if (!oldData) return { results: [newGroup] };
         const data = oldData as { results: Conversation[] };
+        const filtered = (data.results || []).filter((c) => c.id !== newGroup.id);
         return {
           ...data,
-          results: [newGroup, ...data.results],
+          results: [newGroup, ...filtered],
         };
       });
     },
@@ -104,8 +106,19 @@ export function useConversations() {
     },
   });
 
+  const conversations = useMemo(() => {
+    const raw = conversationsQuery.data?.results || [];
+    const seen = new Set<string>();
+    return raw.filter((c) => {
+      if (!c || !c.id) return false;
+      if (seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+  }, [conversationsQuery.data?.results]);
+
   return {
-    conversations: conversationsQuery.data?.results || [],
+    conversations,
     isLoading: conversationsQuery.isLoading,
     isError: conversationsQuery.isError,
     refetch: conversationsQuery.refetch,

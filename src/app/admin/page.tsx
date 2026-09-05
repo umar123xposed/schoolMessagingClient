@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { UserManagementTable } from '@/components/admin/UserManagementTable';
+import { BatchManagementTable } from '@/components/admin/BatchManagementTable';
 import { StorageStatsView } from '@/components/admin/StorageStatsView';
 import { BatchJobsList } from '@/components/admin/BatchJobsList';
-import { Shield, ArrowLeft, Users, HardDrive, ListOrdered } from 'lucide-react';
+import { Shield, ArrowLeft, Users, HardDrive, ListOrdered, GraduationCap } from 'lucide-react';
 
 export default function AdminPage() {
   return (
@@ -18,7 +19,7 @@ export default function AdminPage() {
 
 function AdminDashboard() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'users' | 'storage' | 'jobs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'batches' | 'storage' | 'jobs'>('users');
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0c1317] text-[#e9edef] overflow-hidden">
@@ -61,6 +62,19 @@ function AdminDashboard() {
 
           <button
             type="button"
+            onClick={() => setActiveTab('batches')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === 'batches'
+                ? 'bg-[#00a884] text-white shadow-sm'
+                : 'text-[#8696a0] hover:text-[#e9edef]'
+            }`}
+          >
+            <GraduationCap className="w-4 h-4" />
+            <span>Cohorts / Batches</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('storage')}
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activeTab === 'storage'
@@ -69,7 +83,7 @@ function AdminDashboard() {
             }`}
           >
             <HardDrive className="w-4 h-4" />
-            <span>Storage & Batches</span>
+            <span>Storage Breakdown</span>
           </button>
 
           <button
@@ -90,6 +104,7 @@ function AdminDashboard() {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-6 max-w-7xl w-full mx-auto custom-scrollbar">
         {activeTab === 'users' && <UserManagementTable />}
+        {activeTab === 'batches' && <BatchManagementTable />}
         {activeTab === 'storage' && <StorageStatsView />}
         {activeTab === 'jobs' && <BatchJobsList />}
       </main>

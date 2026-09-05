@@ -6,6 +6,7 @@ export interface CreateUserPayload {
   phoneNumber: string;
   password: string;
   role: UserRole;
+  batchId?: string;
   batchLabel?: string;
   notes?: string;
   email?: string;
@@ -16,6 +17,7 @@ export interface UpdateUserPayload {
   phoneNumber?: string;
   password?: string;
   role?: UserRole;
+  batchId?: string;
   batchLabel?: string;
   notes?: string;
   email?: string;
@@ -24,6 +26,7 @@ export interface UpdateUserPayload {
 export interface GetUsersQuery {
   name?: string;
   role?: UserRole;
+  batchId?: string;
   batchLabel?: string;
   sortBy?: string;
   limit?: number;

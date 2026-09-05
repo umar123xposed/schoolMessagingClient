@@ -8,6 +8,7 @@ export interface ResolvedConversationDetails {
   student: User | null;
   phoneNumber?: string;
   batchLabel?: string;
+  batchId?: string;
 }
 
 export function resolveConversationDetails(
@@ -18,32 +19,36 @@ export function resolveConversationDetails(
   const isGroup = conversation.type === 'agent_group';
   const isStudent = currentUser?.role === 'student';
 
+  // For agent group chats
   if (isGroup) {
-    const participantCount = conversation.participantIds?.length || 0;
+    const title = conversation.name || 'Group Chat';
+    const participantCount = Array.isArray(conversation.participantIds)
+      ? conversation.participantIds.length
+      : 0;
     return {
-      title: conversation.name || 'Staff Group Chat',
+      title,
       subtitle: `${participantCount} participants`,
-      avatarName: conversation.name || 'Staff Group',
+      avatarName: title,
       isGroup: true,
       student: null,
     };
   }
 
-  // Student perspective: They are talking to the School Support desk
+  // If the viewing user is a student, their support conversation represents "School Support"
   if (isStudent) {
     return {
       title: 'School Support',
-      subtitle: 'Official Support Desk',
+      subtitle: 'Official help desk & academic guidance',
       avatarName: 'School Support',
       isGroup: false,
       student: null,
     };
   }
 
-  // Agent / Admin perspective: They are talking to a specific student
+  // For agents viewing a student conversation:
+  // Identify the student user object
   let studentUser: User | null = null;
-
-  if (conversation.studentId && typeof conversation.studentId === 'object') {
+  if (typeof conversation.studentId === 'object' && conversation.studentId) {
     studentUser = conversation.studentId as User;
   } else if (typeof conversation.studentId === 'string' && userMap[conversation.studentId]) {
     studentUser = userMap[conversation.studentId];
@@ -66,7 +71,13 @@ export function resolveConversationDetails(
 
   const name = studentUser?.name || (conversation.name && !conversation.name.toLowerCase().includes('support') ? conversation.name : undefined);
   const phoneNumber = studentUser?.phoneNumber;
-  const batchLabel = studentUser?.batchLabel;
+  const batchId = studentUser?.batchId;
+  const batchLabel =
+    (studentUser as unknown as { batchName?: string })?.batchName ||
+    (typeof (studentUser as unknown as { batchId?: { name?: string } })?.batchId === 'object'
+      ? (studentUser as unknown as { batchId?: { name?: string } })?.batchId?.name
+      : undefined) ||
+    studentUser?.batchLabel;
 
   // Title prioritizes the student's name, then phone number, then conversation name
   let title = name || phoneNumber;
@@ -94,6 +105,7 @@ export function resolveConversationDetails(
     student: studentUser,
     phoneNumber,
     batchLabel,
+    batchId,
   };
 }
 

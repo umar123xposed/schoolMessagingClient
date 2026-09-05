@@ -18,12 +18,18 @@ export function BatchDeleteConfirmModal() {
     addToast,
   } = useUIStore();
 
+  const batchId = selectedBatchForDeletion?.id;
+  const batchName = selectedBatchForDeletion?.name;
+
   const [confirmationInput, setConfirmationInput] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const deleteMutation = useMutation({
-    mutationFn: (batchLabel: string) => adminApi.requestBatchDeletion(batchLabel),
+    mutationFn: async ({ id, confirmName }: { id: string; confirmName: string }) => {
+      return adminApi.requestBatchDeletion(id, confirmName);
+    },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
       queryClient.invalidateQueries({ queryKey: ['storage-stats'] });
       queryClient.invalidateQueries({ queryKey: ['batch-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -32,7 +38,7 @@ export function BatchDeleteConfirmModal() {
       addToast({
         type: 'warning',
         title: 'Batch Deletion Queued',
-        message: `Deletion job initiated for cohort "${selectedBatchForDeletion}".`,
+        message: `Deletion job initiated for cohort "${batchName}". Check Cleanup Jobs for progress.`,
       });
 
       setBatchDeleteModalOpen(false);
@@ -40,19 +46,22 @@ export function BatchDeleteConfirmModal() {
     },
   });
 
-  if (!isBatchDeleteModalOpen || !selectedBatchForDeletion) return null;
+  if (!isBatchDeleteModalOpen || !selectedBatchForDeletion || !batchId || !batchName) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (confirmationInput.trim() !== selectedBatchForDeletion) {
-      setError(`Confirmation text must exactly match "${selectedBatchForDeletion}"`);
+    if (confirmationInput.trim() !== batchName) {
+      setError(`Confirmation text must exactly match "${batchName}"`);
       return;
     }
 
     try {
-      await deleteMutation.mutateAsync(selectedBatchForDeletion);
+      await deleteMutation.mutateAsync({
+        id: batchId,
+        confirmName: confirmationInput.trim(),
+      });
     } catch (err: unknown) {
       const errorMsg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
@@ -78,18 +87,18 @@ export function BatchDeleteConfirmModal() {
             You are about to permanently delete all student accounts, support conversations,
             messages, and uploaded attachments associated with cohort batch{' '}
             <strong className="font-mono text-rose-400 bg-black/40 px-1 py-0.5 rounded">
-              {selectedBatchForDeletion}
+              {batchName}
             </strong>
-            . This cannot be undone.
+            . This cascading deletion runs as a background worker and cannot be undone.
           </p>
         </div>
 
         <div className="space-y-1.5 text-left">
           <label className="block text-xs font-medium text-[#8696a0]">
-            Please type <span className="text-[#e9edef] font-mono font-bold">{selectedBatchForDeletion}</span> below to confirm:
+            Please type <span className="text-[#e9edef] font-mono font-bold">{batchName}</span> below to confirm:
           </label>
           <Input
-            placeholder={selectedBatchForDeletion}
+            placeholder={batchName}
             value={confirmationInput}
             onChange={(e) => setConfirmationInput(e.target.value)}
             required
@@ -116,7 +125,7 @@ export function BatchDeleteConfirmModal() {
             type="submit"
             variant="danger"
             size="sm"
-            disabled={confirmationInput !== selectedBatchForDeletion}
+            disabled={confirmationInput.trim() !== batchName || deleteMutation.isPending}
             isLoading={deleteMutation.isPending}
           >
             <Trash2 className="w-3.5 h-3.5" />

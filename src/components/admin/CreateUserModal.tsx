@@ -8,26 +8,38 @@ import { Modal } from '@/components/common/Modal';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { UserRole } from '@/types';
-import { UserPlus, User, Phone, Lock, Mail, GraduationCap } from 'lucide-react';
+import { UserPlus, User, Phone, Lock, Mail, GraduationCap, Plus, Undo2 } from 'lucide-react';
+import { useBatches } from '@/hooks/useBatches';
 
 export function CreateUserModal() {
   const queryClient = useQueryClient();
   const { isCreateUserModalOpen, setCreateUserModalOpen, addToast } = useUIStore();
+  const { batches, isLoading: isLoadingBatches, createBatch } = useBatches();
 
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('password1');
   const [role, setRole] = useState<UserRole>('student');
-  const [batchLabel, setBatchLabel] = useState('2026-spring');
+  const [selectedBatchId, setSelectedBatchId] = useState('');
+  const [isCreatingNewBatch, setIsCreatingNewBatch] = useState(false);
+  const [newBatchName, setNewBatchName] = useState('');
   const [notes, setNotes] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-select first batch when batches load if not set
+  React.useEffect(() => {
+    if (batches.length > 0 && !selectedBatchId) {
+      setSelectedBatchId(batches[0].id);
+    }
+  }, [batches, selectedBatchId]);
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateUserPayload) => usersApi.createUser(payload),
     onSuccess: (newUser) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-stats'] });
       addToast({
         type: 'success',
         title: 'Account Provisioned',
@@ -43,7 +55,9 @@ export function CreateUserModal() {
     setPhoneNumber('');
     setPassword('password1');
     setRole('student');
-    setBatchLabel('2026-spring');
+    setSelectedBatchId(batches[0]?.id || '');
+    setIsCreatingNewBatch(false);
+    setNewBatchName('');
     setNotes('');
     setEmail('');
     setError(null);
@@ -64,13 +78,36 @@ export function CreateUserModal() {
       return;
     }
 
+    let finalBatchId = selectedBatchId;
+
+    // If user typed a new batch inline, create the batch first
+    if (role === 'student' && isCreatingNewBatch) {
+      const trimmedBatch = newBatchName.trim();
+      if (!trimmedBatch) {
+        setError('Please provide a name for the new batch');
+        return;
+      }
+      try {
+        const created = await createBatch({ name: trimmedBatch });
+        finalBatchId = created.id;
+        setSelectedBatchId(created.id);
+        setIsCreatingNewBatch(false);
+      } catch (batchErr: unknown) {
+        const errorMsg =
+          (batchErr as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Failed to create batch';
+        setError(errorMsg);
+        return;
+      }
+    }
+
     try {
       await createMutation.mutateAsync({
         name: name.trim(),
         phoneNumber: phoneClean,
         password,
         role,
-        batchLabel: role === 'student' ? batchLabel.trim() || undefined : undefined,
+        batchId: role === 'student' ? finalBatchId || undefined : undefined,
         notes: notes.trim() || undefined,
         email: email.trim() || undefined,
       });
@@ -158,13 +195,73 @@ export function CreateUserModal() {
         {/* Student Specific Fields */}
         {role === 'student' && (
           <div className="p-3.5 rounded-xl bg-[#202c33] border border-[#2a3942] space-y-3 animate-fade-in">
-            <Input
-              label="Cohort Batch Label (e.g. 2026-spring)"
-              placeholder="2026-spring"
-              value={batchLabel}
-              onChange={(e) => setBatchLabel(e.target.value)}
-              leftIcon={<GraduationCap className="w-4 h-4 text-[#00a884]" />}
-            />
+            {/* Cohort Batch Selector (Authoritative BatchId) */}
+            <div className="space-y-1.5 text-left">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-medium text-[#8696a0]">
+                  Cohort Batch (Required for Students)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreatingNewBatch(!isCreatingNewBatch);
+                    setNewBatchName('');
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] text-[#00a884] hover:underline"
+                >
+                  {isCreatingNewBatch ? (
+                    <>
+                      <Undo2 className="w-3 h-3" /> Select Existing
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3 h-3" /> New Cohort Batch
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {isCreatingNewBatch ? (
+                <Input
+                  placeholder="e.g. 2026-fall"
+                  value={newBatchName}
+                  onChange={(e) => setNewBatchName(e.target.value)}
+                  leftIcon={<GraduationCap className="w-4 h-4 text-[#00a884]" />}
+                  required
+                  autoFocus
+                />
+              ) : (
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#00a884]">
+                    <GraduationCap className="w-4 h-4" />
+                  </div>
+                  <select
+                    value={selectedBatchId}
+                    onChange={(e) => {
+                      if (e.target.value === '__NEW__') {
+                        setIsCreatingNewBatch(true);
+                      } else {
+                        setSelectedBatchId(e.target.value);
+                      }
+                    }}
+                    className="w-full rounded-xl bg-[#111b21] pl-9 pr-3 py-2.5 text-xs text-[#e9edef] border border-[#2a3942] focus:border-[#00a884] outline-none transition-colors appearance-none cursor-pointer"
+                  >
+                    {batches.length === 0 ? (
+                      <option value="" disabled>
+                        {isLoadingBatches ? 'Loading batches...' : 'No batches exist yet (Create one)'}
+                      </option>
+                    ) : (
+                      batches.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))
+                    )}
+                    <option value="__NEW__">+ Create New Cohort Batch...</option>
+                  </select>
+                </div>
+              )}
+            </div>
 
             <div className="space-y-1.5 text-left">
               <label className="block text-xs font-medium text-[#8696a0]">

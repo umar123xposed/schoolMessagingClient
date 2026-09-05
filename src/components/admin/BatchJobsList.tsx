@@ -59,7 +59,7 @@ export function BatchJobsList() {
           <table className="w-full text-left text-xs">
             <thead className="bg-[#202c33] text-[#8696a0] uppercase tracking-wider font-semibold border-b border-[#222e35]">
               <tr>
-                <th className="px-5 py-3">Batch Label</th>
+                <th className="px-5 py-3">Batch Name</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3">Deleted Records</th>
                 <th className="px-5 py-3">Requested At</th>
@@ -80,30 +80,37 @@ export function BatchJobsList() {
                   </td>
                 </tr>
               ) : (
-                jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-[#182229] transition-colors">
-                    <td className="px-5 py-3.5 font-mono font-bold text-[#e9edef]">
-                      {job.batchLabel}
-                    </td>
-                    <td className="px-5 py-3.5">{renderStatusBadge(job.status)}</td>
-                    <td className="px-5 py-3.5 text-[#8696a0]">
-                      {job.counts ? (
-                        <span>
-                          {job.counts.studentsDeleted} students, {job.counts.messagesDeleted} msgs,{' '}
-                          {job.counts.attachmentsDeleted} files
-                        </span>
-                      ) : (
-                        <span>—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-[#8696a0]">
-                      {formatWhatsAppChatDate(job.createdAt)}
-                    </td>
-                    <td className="px-5 py-3.5 text-[#8696a0]">
-                      {job.completedAt ? formatWhatsAppChatDate(job.completedAt) : '—'}
-                    </td>
-                  </tr>
-                ))
+                jobs.map((job) => {
+                  const name = job.batchName || job.batchLabel || job.batchId || '—';
+                  const studentsCount = job.counts?.students ?? job.counts?.studentsDeleted ?? 0;
+                  const messagesCount = job.counts?.messages ?? job.counts?.messagesDeleted ?? 0;
+                  const attachmentsCount = job.counts?.attachmentsDeleted ?? 0;
+                  const finishedDate = job.finishedAt || job.completedAt;
+
+                  return (
+                    <tr key={job.id} className="hover:bg-[#182229] transition-colors">
+                      <td className="px-5 py-3.5 font-mono font-bold text-[#e9edef]">
+                        {name}
+                      </td>
+                      <td className="px-5 py-3.5">{renderStatusBadge(job.status)}</td>
+                      <td className="px-5 py-3.5 text-[#8696a0]">
+                        {job.counts ? (
+                          <span>
+                            {studentsCount} students, {messagesCount} msgs, {attachmentsCount} files
+                          </span>
+                        ) : (
+                          <span>—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-[#8696a0]">
+                        {formatWhatsAppChatDate(job.startedAt || job.createdAt)}
+                      </td>
+                      <td className="px-5 py-3.5 text-[#8696a0]">
+                        {finishedDate ? formatWhatsAppChatDate(finishedDate) : '—'}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

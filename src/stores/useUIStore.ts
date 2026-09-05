@@ -8,6 +8,11 @@ export interface ToastMessage {
   message: string;
 }
 
+export interface BatchDeletionTarget {
+  id: string;
+  name: string;
+}
+
 interface UIState {
   isCreateGroupModalOpen: boolean;
   isBroadcastModalOpen: boolean;
@@ -15,7 +20,7 @@ interface UIState {
   isTemplateManagerModalOpen: boolean;
   isCreateUserModalOpen: boolean;
   isBatchDeleteModalOpen: boolean;
-  selectedBatchForDeletion: string | null;
+  selectedBatchForDeletion: BatchDeletionTarget | null;
   mediaPreview: {
     isOpen: boolean;
     attachment: Attachment | null;
@@ -27,7 +32,7 @@ interface UIState {
   setLabelManagerModalOpen: (open: boolean) => void;
   setTemplateManagerModalOpen: (open: boolean) => void;
   setCreateUserModalOpen: (open: boolean) => void;
-  setBatchDeleteModalOpen: (open: boolean, batchLabel?: string) => void;
+  setBatchDeleteModalOpen: (open: boolean, batch?: BatchDeletionTarget | string) => void;
   openMediaPreview: (attachment: Attachment) => void;
   closeMediaPreview: () => void;
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
@@ -53,8 +58,17 @@ export const useUIStore = create<UIState>((set) => ({
   setLabelManagerModalOpen: (open) => set({ isLabelManagerModalOpen: open }),
   setTemplateManagerModalOpen: (open) => set({ isTemplateManagerModalOpen: open }),
   setCreateUserModalOpen: (open) => set({ isCreateUserModalOpen: open }),
-  setBatchDeleteModalOpen: (open, batchLabel) =>
-    set({ isBatchDeleteModalOpen: open, selectedBatchForDeletion: batchLabel || null }),
+  setBatchDeleteModalOpen: (open, batch) => {
+    let target: BatchDeletionTarget | null = null;
+    if (batch) {
+      if (typeof batch === 'string') {
+        target = { id: batch, name: batch };
+      } else {
+        target = batch;
+      }
+    }
+    set({ isBatchDeleteModalOpen: open, selectedBatchForDeletion: target });
+  },
 
   openMediaPreview: (attachment) =>
     set({

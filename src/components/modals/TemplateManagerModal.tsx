@@ -7,7 +7,7 @@ import { useUIStore } from '@/stores/useUIStore';
 import { Modal } from '@/components/common/Modal';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
-import { Plus, Trash2, Edit2, Globe, User as UserIcon } from 'lucide-react';
+import { Plus, Trash2, Edit2 } from 'lucide-react';
 import { Template } from '@/types';
 
 export function TemplateManagerModal() {
@@ -16,7 +16,6 @@ export function TemplateManagerModal() {
 
   const [shortcut, setShortcut] = useState('');
   const [content, setContent] = useState('');
-  const [isShared, setIsShared] = useState(true);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +28,7 @@ export function TemplateManagerModal() {
   const templates = templatesResult?.results || [];
 
   const createMutation = useMutation({
-    mutationFn: (payload: { shortcut: string; content: string; isShared?: boolean }) =>
+    mutationFn: (payload: { shortcut: string; content: string }) =>
       templatesApi.createTemplate(payload),
     onSuccess: (newTemplate) => {
       queryClient.setQueryData(['templates'], (old: unknown) => {
@@ -49,7 +48,7 @@ export function TemplateManagerModal() {
       payload,
     }: {
       id: string;
-      payload: { shortcut?: string; content?: string; isShared?: boolean };
+      payload: { shortcut?: string; content?: string };
     }) => templatesApi.updateTemplate(id, payload),
     onSuccess: (updated) => {
       queryClient.setQueryData(['templates'], (old: unknown) => {
@@ -101,13 +100,12 @@ export function TemplateManagerModal() {
       if (editingTemplateId) {
         await updateMutation.mutateAsync({
           id: editingTemplateId,
-          payload: { shortcut: cleanShortcut, content: content.trim(), isShared },
+          payload: { shortcut: cleanShortcut, content: content.trim() },
         });
       } else {
         await createMutation.mutateAsync({
           shortcut: cleanShortcut,
           content: content.trim(),
-          isShared,
         });
       }
     } catch (err: unknown) {
@@ -122,7 +120,6 @@ export function TemplateManagerModal() {
     setEditingTemplateId(tpl.id);
     setShortcut(tpl.shortcut);
     setContent(tpl.content);
-    setIsShared(tpl.isShared);
   };
 
   const handleCancelEdit = () => {
@@ -136,52 +133,24 @@ export function TemplateManagerModal() {
       isOpen={isTemplateManagerModalOpen}
       onClose={() => setTemplateManagerModalOpen(false)}
       title="Quick Replies & Templates"
-      description="Create shortcuts (e.g. /1 or /welcome) for rapid support answers"
+      description="Create personal shortcuts (e.g. /1 or /welcome) for rapid support answers"
       maxWidth="lg"
     >
       <div className="space-y-6">
         {/* Creation/Edit Form */}
         <form onSubmit={handleSubmit} className="p-4 rounded-xl bg-[#202c33] border border-[#2a3942] space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
             <Input
               label="Shortcut Trigger"
-              placeholder="e.g. 1 or fee-info"
+              placeholder="e.g. 1, fee-info, or welcome"
               value={shortcut}
               onChange={(e) => setShortcut(e.target.value)}
               leftIcon={<span className="text-[#00a884] font-bold">/</span>}
               required
             />
-
-            <div className="space-y-1.5 text-left">
-              <label className="block text-xs font-medium text-[#8696a0]">Sharing Scope</label>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setIsShared(true)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${
-                    isShared
-                      ? 'bg-[#00a884]/20 border-[#00a884] text-[#00a884]'
-                      : 'bg-[#111b21] border-[#2a3942] text-[#8696a0]'
-                  }`}
-                >
-                  <Globe className="w-3.5 h-3.5" />
-                  <span>Shared with all staff</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsShared(false)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium border transition-all ${
-                    !isShared
-                      ? 'bg-[#00a884]/20 border-[#00a884] text-[#00a884]'
-                      : 'bg-[#111b21] border-[#2a3942] text-[#8696a0]'
-                  }`}
-                >
-                  <UserIcon className="w-3.5 h-3.5" />
-                  <span>Personal only</span>
-                </button>
-              </div>
-            </div>
+            <p className="text-[11px] text-[#8696a0] mt-1">
+              Personal shortcut. You can freely reuse numbers or keywords (e.g. /1, /2).
+            </p>
           </div>
 
           <div className="space-y-1.5 text-left">
@@ -242,17 +211,6 @@ export function TemplateManagerModal() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-[#e9edef] whitespace-pre-wrap">{tpl.content}</p>
-                    <div className="flex items-center gap-1 mt-1 text-[10px] text-[#8696a0]">
-                      {tpl.isShared ? (
-                        <>
-                          <Globe className="w-2.5 h-2.5" /> Shared with all staff
-                        </>
-                      ) : (
-                        <>
-                          <UserIcon className="w-2.5 h-2.5" /> Personal
-                        </>
-                      )}
-                    </div>
                   </div>
                 </div>
 
