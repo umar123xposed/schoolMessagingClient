@@ -1,23 +1,47 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useUIStore } from '@/stores/useUIStore';
 import { X, Download, ExternalLink } from 'lucide-react';
 
 export function MediaViewerModal() {
   const { mediaPreview, closeMediaPreview } = useUIStore();
 
+  useEffect(() => {
+    if (!mediaPreview.isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeMediaPreview();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mediaPreview.isOpen, closeMediaPreview]);
+
   if (!mediaPreview.isOpen || !mediaPreview.attachment) return null;
 
   const att = mediaPreview.attachment;
-  const isImage = att.mimeType.startsWith('image/');
-  const isVideo = att.mimeType.startsWith('video/');
+  const fileNameOrUrl = (att.fileName || att.url || '').toLowerCase();
+  const isImage =
+    att.mimeType.startsWith('image/') ||
+    /\.(png|jpe?g|webp|gif|svg|bmp)$/i.test(fileNameOrUrl);
+  const isVideo =
+    att.mimeType.startsWith('video/') ||
+    /\.(mp4|webm|mov|m4v|ogg|ogv)$/i.test(fileNameOrUrl);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in">
+    <div
+      onClick={closeMediaPreview}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in select-none"
+    >
       {/* Top Bar Controls */}
-      <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-        <div className="text-white text-sm font-medium truncate max-w-md">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="absolute top-4 left-4 right-4 flex items-center justify-between z-10"
+      >
+        <div className="text-white text-sm font-medium truncate max-w-md drop-shadow">
           {att.fileName}
         </div>
         <div className="flex items-center gap-3">
@@ -35,7 +59,7 @@ export function MediaViewerModal() {
             type="button"
             onClick={closeMediaPreview}
             className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
-            title="Close"
+            title="Close (Esc)"
           >
             <X className="w-5 h-5" />
           </button>
@@ -43,13 +67,16 @@ export function MediaViewerModal() {
       </div>
 
       {/* Main Media Content */}
-      <div className="max-w-4xl max-h-[85vh] flex items-center justify-center overflow-hidden">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="max-w-5xl max-h-[85vh] flex items-center justify-center overflow-hidden"
+      >
         {isImage && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={att.url}
             alt={att.fileName}
-            className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+            className="max-w-full max-h-[82vh] object-contain rounded-lg shadow-2xl"
           />
         )}
         {isVideo && (
@@ -58,7 +85,7 @@ export function MediaViewerModal() {
             controls
             autoPlay
             playsInline
-            className="max-w-full max-h-[80vh] rounded-lg shadow-2xl"
+            className="max-w-full max-h-[82vh] rounded-lg shadow-2xl bg-black outline-none"
           />
         )}
         {!isImage && !isVideo && (

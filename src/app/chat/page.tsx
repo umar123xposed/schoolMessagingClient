@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useChatStore } from '@/stores/useChatStore';
@@ -52,12 +52,14 @@ function ChatApp() {
   const {
     messages,
     sendMessage,
+    sendMediaMessage,
     sendMultipleMessages,
     pinMessage,
     deleteMessage,
   } = useMessages(activeConversationId);
 
   const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
+  const hasInitialAutoSelected = useRef<string | null>(null);
 
   const isStudent = user?.role === 'student';
   const markAsRead = useUnreadStore((s) => s.markAsRead);
@@ -83,12 +85,13 @@ function ChatApp() {
     }
   }, [activeConversationId, markAsRead, markAsReadSync, conversations, user?.role]);
 
-  // Automatically select the student's single conversation
+  // Automatically select the student's single conversation on initial login
   useEffect(() => {
-    if (isStudent && conversations.length > 0 && !activeConversationId) {
+    if (isStudent && conversations.length > 0 && hasInitialAutoSelected.current !== user?.id && !activeConversationId) {
+      hasInitialAutoSelected.current = user?.id || 'done';
       setActiveConversation(conversations[0]);
     }
-  }, [isStudent, conversations, activeConversationId, setActiveConversation]);
+  }, [isStudent, conversations, activeConversationId, setActiveConversation, user?.id]);
 
   // Keep active conversation reference in sync when conversations list updates
   useEffect(() => {
@@ -118,7 +121,7 @@ function ChatApp() {
       {/* On mobile: hidden if a chat is active */}
       <div
         className={`w-full lg:w-96 xl:w-[420px] flex-shrink-0 flex flex-col h-full bg-[#111b21] border-r border-[#222e35] transition-all ${
-          activeConversationId && !isStudent ? 'hidden lg:flex' : 'flex'
+          activeConversationId ? 'hidden lg:flex' : 'flex'
         }`}
       >
         <SidebarHeader />
@@ -156,10 +159,10 @@ function ChatApp() {
       </div>
 
       {/* CENTER & RIGHT PANE: Active Chat & Info Drawer */}
-      {/* On mobile: hidden if no chat is active, unless student */}
+      {/* On mobile: hidden if no chat is active */}
       <div
         className={`flex-1 flex h-full min-w-0 transition-all ${
-          !activeConversationId && !isStudent ? 'hidden lg:flex' : 'flex'
+          !activeConversationId ? 'hidden lg:flex' : 'flex'
         }`}
       >
         {activeConversation ? (
@@ -181,6 +184,7 @@ function ChatApp() {
               <ChatComposer
                 conversationId={activeConversation.id}
                 onSendMessage={sendMessage}
+                onSendMediaMessage={sendMediaMessage}
                 onSendMultipleMessages={sendMultipleMessages}
               />
             </div>

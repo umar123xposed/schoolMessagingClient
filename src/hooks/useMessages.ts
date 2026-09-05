@@ -2,9 +2,18 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { messagesApi, BroadcastMessagePayload } from '@/lib/api/messages';
-import { SendMessagePayload, Message, Conversation } from '@/types';
+import { uploadsApi } from '@/lib/api/uploads';
+import { SendMessagePayload, Message, Conversation, MessageContentType } from '@/types';
 import { soundEffects } from '@/lib/utils/sound';
 import { useAuthStore } from '@/stores/useAuthStore';
+
+export interface SendMediaMessagePayload {
+  contentType: MessageContentType;
+  file: File | Blob;
+  fileName?: string;
+  text?: string;
+  duration?: number;
+}
 
 export function useMessages(conversationId?: string | null) {
   const queryClient = useQueryClient();
@@ -247,12 +256,164 @@ export function useMessages(conversationId?: string | null) {
     },
   });
 
+  const sendMediaMessage = async ({
+    contentType,
+    file,
+    fileName,
+    text,
+    duration,
+  }: SendMediaMessagePayload) => {
+    if (!conversationId) return;
+
+    // Create a local object URL for instant preview before network upload
+    const localPreviewUrl = URL.createObjectURL(file);
+    const tempId = `optimistic-media-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const resolvedName = fileName || (file instanceof File ? file.name : `${contentType}_${Date.now()}.bin`);
+    const resolvedMime = file.type || (contentType === 'voice_note' ? 'audio/webm' : 'application/octet-stream');
+
+    const optimisticMessage: Message = {
+      id: tempId,
+      tempId,
+      conversationId,
+      senderId: user?.id || 'me',
+      contentType,
+      text: text?.trim() || undefined,
+      attachment: {
+        url: localPreviewUrl,
+        mimeType: resolvedMime,
+        size: file.size,
+        fileName: resolvedName,
+        duration: duration && duration > 0 ? duration : undefined,
+      },
+      isPinned: false,
+      isDeleted: false,
+      isBroadcast: false,
+      status: 'sending',
+      uploadProgress: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    // 1. Instantly inject optimistic media message into messages query cache
+    queryClient.setQueryData(['messages', conversationId], (oldData: unknown) => {
+      const data = (oldData || { results: [], page: 1, limit: 100, totalPages: 1, totalResults: 0 }) as {
+        results: Message[];
+        page: number;
+        limit: number;
+        totalPages: number;
+        totalResults: number;
+      };
+      const existingResults = (data.results || []).flat(2).filter((m): m is Message => !!m && typeof m === 'object' && !!m.id);
+      return {
+        ...data,
+        results: [...existingResults, optimisticMessage],
+        totalResults: (data.totalResults || existingResults.length) + 1,
+      };
+    });
+
+    // 2. Update conversations cache with preview
+    queryClient.setQueryData(['conversations'], (oldData: unknown) => {
+      if (!oldData) return oldData;
+      const data = oldData as { results: Conversation[] };
+      const existingIndex = (data.results || []).findIndex((c) => c.id === conversationId);
+      if (existingIndex > -1) {
+        const updatedList = [...data.results];
+        const updatedConv: Conversation = {
+          ...updatedList[existingIndex],
+          lastMessageAt: optimisticMessage.createdAt,
+          lastMessage: optimisticMessage,
+        };
+        updatedList.splice(existingIndex, 1);
+        updatedList.unshift(updatedConv);
+        return { ...data, results: updatedList };
+      }
+      return oldData;
+    });
+
+    try {
+      // 3. Upload file directly to R2 with live progress updates
+      const uploadedAttachment = await uploadsApi.uploadFile(
+        contentType,
+        file,
+        resolvedName,
+        (progress) => {
+          queryClient.setQueryData(['messages', conversationId], (oldData: unknown) => {
+            if (!oldData) return oldData;
+            const data = oldData as { results: Message[] };
+            const existing = (data.results || []).flat(2).filter((m): m is Message => !!m && typeof m === 'object' && !!m.id);
+            return {
+              ...data,
+              results: existing.map((m) =>
+                m.id === tempId ? { ...m, uploadProgress: progress } : m
+              ),
+            };
+          });
+        },
+        duration
+      );
+
+      // 4. Send message to backend with the uploaded attachment
+      const rawServerMsg = await messagesApi.sendMessage(conversationId, {
+        contentType,
+        attachment: uploadedAttachment,
+        text: text?.trim() || undefined,
+      });
+
+      soundEffects.playSent();
+      try {
+        URL.revokeObjectURL(localPreviewUrl);
+      } catch {
+        // Ignore blob revocation error
+      }
+
+      const confirmedMsg: Message = {
+        ...rawServerMsg,
+        status: 'delivered',
+        uploadProgress: undefined,
+      };
+
+      // 5. Swap optimistic message with confirmed server message
+      queryClient.setQueryData(['messages', conversationId], (oldData: unknown) => {
+        if (!oldData) return { results: [confirmedMsg], page: 1, limit: 100, totalPages: 1, totalResults: 1 };
+        const data = oldData as { results: Message[]; page: number; limit: number; totalPages: number; totalResults: number };
+        const existing = (data.results || []).flat(2).filter((m): m is Message => !!m && typeof m === 'object' && !!m.id);
+
+        const updated = existing.map((m) => (m.id === tempId ? confirmedMsg : m));
+        if (!updated.some((m) => m.id === confirmedMsg.id)) {
+          updated.push(confirmedMsg);
+        }
+
+        return {
+          ...data,
+          results: updated,
+        };
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      return confirmedMsg;
+    } catch (err: unknown) {
+      console.error('Failed to upload and send message:', err);
+      queryClient.setQueryData(['messages', conversationId], (oldData: unknown) => {
+        if (!oldData) return oldData;
+        const data = oldData as { results: Message[] };
+        const existing = (data.results || []).flat(2).filter((m): m is Message => !!m && typeof m === 'object' && !!m.id);
+        return {
+          ...data,
+          results: existing.map((m) =>
+            m.id === tempId ? { ...m, status: 'error' as const, uploadProgress: undefined } : m
+          ),
+        };
+      });
+      throw err;
+    }
+  };
+
   return {
     messages: messagesQuery.data?.results || [],
     isLoading: messagesQuery.isLoading,
     isError: messagesQuery.isError,
     refetch: messagesQuery.refetch,
     sendMessage: sendMessageMutation.mutateAsync,
+    sendMediaMessage,
     isSending: sendMessageMutation.isPending,
     sendMultipleMessages: sendMultipleMessagesMutation.mutateAsync,
     isSendingMultiple: sendMultipleMessagesMutation.isPending,
