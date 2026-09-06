@@ -173,3 +173,25 @@ export interface PaginatedResult<T> {
   totalPages: number;
   totalResults: number;
 }
+
+export interface ImportedStudent {
+  id?: string;
+  _id?: string;
+  name: string;
+  phoneNumber: string;
+  email?: string;
+  role?: UserRole;
+  batchId?: string;
+  temporaryPassword?: string;
+  password?: string;
+  createdAt?: string;
+}
+
+export interface ImportStudentsResponse {
+  results?: ImportedStudent[];
+  students?: ImportedStudent[];
+  created?: ImportedStudent[];
+  count?: number;
+  message?: string;
+  [key: string]: unknown;
+}

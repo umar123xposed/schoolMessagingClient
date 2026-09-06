@@ -19,6 +19,7 @@ interface UIState {
   isLabelManagerModalOpen: boolean;
   isTemplateManagerModalOpen: boolean;
   isCreateUserModalOpen: boolean;
+  createUserModalTab: 'single' | 'import';
   isBatchDeleteModalOpen: boolean;
   selectedBatchForDeletion: BatchDeletionTarget | null;
   mediaPreview: {
@@ -31,7 +32,7 @@ interface UIState {
   setBroadcastModalOpen: (open: boolean) => void;
   setLabelManagerModalOpen: (open: boolean) => void;
   setTemplateManagerModalOpen: (open: boolean) => void;
-  setCreateUserModalOpen: (open: boolean) => void;
+  setCreateUserModalOpen: (open: boolean, initialTab?: 'single' | 'import') => void;
   setBatchDeleteModalOpen: (open: boolean, batch?: BatchDeletionTarget | string) => void;
   openMediaPreview: (attachment: Attachment) => void;
   closeMediaPreview: () => void;
@@ -45,6 +46,7 @@ export const useUIStore = create<UIState>((set) => ({
   isLabelManagerModalOpen: false,
   isTemplateManagerModalOpen: false,
   isCreateUserModalOpen: false,
+  createUserModalTab: 'single',
   isBatchDeleteModalOpen: false,
   selectedBatchForDeletion: null,
   mediaPreview: {
@@ -57,7 +59,11 @@ export const useUIStore = create<UIState>((set) => ({
   setBroadcastModalOpen: (open) => set({ isBroadcastModalOpen: open }),
   setLabelManagerModalOpen: (open) => set({ isLabelManagerModalOpen: open }),
   setTemplateManagerModalOpen: (open) => set({ isTemplateManagerModalOpen: open }),
-  setCreateUserModalOpen: (open) => set({ isCreateUserModalOpen: open }),
+  setCreateUserModalOpen: (open, initialTab) =>
+    set({
+      isCreateUserModalOpen: open,
+      createUserModalTab: initialTab || (open ? 'single' : 'single'),
+    }),
   setBatchDeleteModalOpen: (open, batch) => {
     let target: BatchDeletionTarget | null = null;
     if (batch) {

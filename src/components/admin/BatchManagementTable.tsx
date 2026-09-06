@@ -154,7 +154,7 @@ export function BatchManagementTable() {
           <div className="flex items-center gap-3">
             <div className="flex-1">
               <Input
-                placeholder="e.g. 2026-fall"
+                placeholder="Batch name"
                 value={newBatchName}
                 onChange={(e) => setNewBatchName(e.target.value)}
                 autoFocus
@@ -197,7 +197,6 @@ export function BatchManagementTable() {
             <thead className="bg-[#182229] text-[#8696a0] uppercase tracking-wider font-semibold border-b border-[#222e35]">
               <tr>
                 <th className="px-5 py-3">Batch Name</th>
-                <th className="px-5 py-3">Batch ID (Ref)</th>
                 <th className="px-5 py-3">Created</th>
                 <th className="px-5 py-3 text-right">Actions</th>
               </tr>
@@ -205,13 +204,13 @@ export function BatchManagementTable() {
             <tbody className="divide-y divide-[#222e35] text-[#d1d7db]">
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-8 text-center text-[#8696a0]">
+                  <td colSpan={3} className="px-5 py-8 text-center text-[#8696a0]">
                     Loading batches...
                   </td>
                 </tr>
               ) : batches.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-8 text-center text-[#8696a0]">
+                  <td colSpan={3} className="px-5 py-8 text-center text-[#8696a0]">
                     No cohort batches registered yet. Click &quot;Create Cohort Batch&quot; above to add one.
                   </td>
                 </tr>
@@ -258,9 +257,6 @@ export function BatchManagementTable() {
                         {isEditing && editError && (
                           <p className="text-[11px] text-rose-400 mt-1">{editError}</p>
                         )}
-                      </td>
-                      <td className="px-5 py-3 font-mono text-[11px] text-[#8696a0]">
-                        {batch.id}
                       </td>
                       <td className="px-5 py-3 text-[#8696a0]">
                         {formatWhatsAppChatDate(batch.createdAt)}

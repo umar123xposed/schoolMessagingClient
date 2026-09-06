@@ -133,7 +133,6 @@ export function TemplateManagerModal() {
       isOpen={isTemplateManagerModalOpen}
       onClose={() => setTemplateManagerModalOpen(false)}
       title="Quick Replies & Templates"
-      description="Create personal shortcuts (e.g. /1 or /welcome) for rapid support answers"
       maxWidth="lg"
     >
       <div className="space-y-6">
@@ -142,22 +141,19 @@ export function TemplateManagerModal() {
           <div>
             <Input
               label="Shortcut Trigger"
-              placeholder="e.g. 1, fee-info, or welcome"
+              placeholder="Shortcut (e.g. 1)"
               value={shortcut}
               onChange={(e) => setShortcut(e.target.value)}
               leftIcon={<span className="text-[#00a884] font-bold">/</span>}
               required
             />
-            <p className="text-[11px] text-[#8696a0] mt-1">
-              Personal shortcut. You can freely reuse numbers or keywords (e.g. /1, /2).
-            </p>
           </div>
 
           <div className="space-y-1.5 text-left">
             <label className="block text-xs font-medium text-[#8696a0]">Reply Message</label>
             <textarea
               rows={3}
-              placeholder="Type the full message text to insert when shortcut is typed..."
+              placeholder="Message text..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="w-full rounded-lg bg-[#111b21] p-3 text-xs text-[#e9edef] placeholder-[#8696a0] outline-none border border-[#2a3942] focus:border-[#00a884] resize-none"

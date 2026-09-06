@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { Batch, BatchDeletionJob, PaginatedResult, User } from '@/types';
+import { Batch, BatchDeletionJob, PaginatedResult, User, ImportedStudent, ImportStudentsResponse } from '@/types';
 
 export interface CreateBatchPayload {
   name: string;
@@ -56,6 +56,24 @@ export const batchesApi = {
 
   getBatchStudents: async (batchId: string, params?: GetBatchStudentsParams): Promise<PaginatedResult<User>> => {
     const { data } = await apiClient.get<PaginatedResult<User>>(`/batches/${batchId}/students`, { params });
+    return data;
+  },
+
+  importStudents: async (
+    batchId: string,
+    file: File
+  ): Promise<ImportedStudent[] | ImportStudentsResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await apiClient.post<ImportedStudent[] | ImportStudentsResponse>(
+      `/batches/${batchId}/students/import`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
     return data;
   },
 };

@@ -170,8 +170,7 @@ export function UserManagementTable() {
                       {(() => {
                         const batchName =
                           (u.batchId && batchMap[u.batchId]?.name) ||
-                          u.batchLabel ||
-                          (u.batchId ? u.batchId.slice(-6) : null);
+                          u.batchLabel;
                         return batchName ? (
                           <span className="px-2 py-0.5 rounded bg-[#202c33] text-emerald-400 font-mono text-[11px] border border-[#2a3942]">
                             {batchName}

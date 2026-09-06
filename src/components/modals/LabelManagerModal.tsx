@@ -134,7 +134,6 @@ export function LabelManagerModal() {
       isOpen={isLabelManagerModalOpen}
       onClose={() => setLabelManagerModalOpen(false)}
       title="Conversation Labels"
-      description="Manage color-coded tags for organizing student support chats"
       maxWidth="md"
     >
       <div className="space-y-6">
@@ -142,7 +141,7 @@ export function LabelManagerModal() {
         <form onSubmit={handleSubmit} className="p-4 rounded-xl bg-[#202c33] border border-[#2a3942] space-y-3">
           <Input
             label={editingLabelId ? 'Edit Label Name' : 'New Label Name'}
-            placeholder="e.g. Urgent / Fee Inquiry / New Admission"
+            placeholder="Label name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             leftIcon={<Tag className="w-4 h-4 text-[#00a884]" />}
