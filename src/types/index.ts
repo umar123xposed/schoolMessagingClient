@@ -6,11 +6,19 @@ export interface User {
   phoneNumber: string;
   email?: string;
   role: UserRole;
+  batchId?: string;
   batchLabel?: string;
   notes?: string;
   isOnline?: boolean;
   lastSeenAt?: string;
   createdAt?: string;
+}
+
+export interface Batch {
+  id: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuthTokens {
@@ -101,13 +109,23 @@ export interface Template {
   id: string;
   shortcut: string;
   content: string;
-  isShared: boolean;
   createdBy?: string;
   createdAt?: string;
 }
 
 export interface StorageStatsBatch {
-  batchLabel: string;
+  batchId?: string | null;
+  batchName?: string;
+  batchLabel?: string;
+  studentCount: number;
+  conversationCount: number;
+  messageCount: number;
+  attachmentCount: number;
+  attachmentBytes?: number;
+  totalSizeBytes?: number;
+}
+
+export interface StorageStatsTotal {
   studentCount: number;
   conversationCount: number;
   messageCount: number;
@@ -118,28 +136,30 @@ export interface StorageStatsBatch {
 
 export interface StorageStats {
   batches: StorageStatsBatch[];
-  totals: {
-    studentCount: number;
-    conversationCount: number;
-    messageCount: number;
-    attachmentCount: number;
-    attachmentBytes?: number;
-    totalSizeBytes?: number;
-  };
+  total?: StorageStatsTotal;
+  totals?: StorageStatsTotal;
 }
 
 export type BatchJobStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 export interface BatchDeletionJob {
   id: string;
-  batchLabel: string;
+  batchId?: string;
+  batchName?: string;
+  batchLabel?: string;
   status: BatchJobStatus;
-  requestedBy: string;
+  triggeredBy?: string;
+  requestedBy?: string;
+  startedAt?: string;
+  finishedAt?: string;
   counts?: {
-    studentsDeleted: number;
-    conversationsDeleted: number;
-    messagesDeleted: number;
-    attachmentsDeleted: number;
+    students?: number;
+    conversations?: number;
+    messages?: number;
+    attachmentsDeleted?: number;
+    studentsDeleted?: number;
+    conversationsDeleted?: number;
+    messagesDeleted?: number;
   };
   error?: string;
   createdAt: string;
@@ -152,4 +172,26 @@ export interface PaginatedResult<T> {
   limit: number;
   totalPages: number;
   totalResults: number;
+}
+
+export interface ImportedStudent {
+  id?: string;
+  _id?: string;
+  name: string;
+  phoneNumber: string;
+  email?: string;
+  role?: UserRole;
+  batchId?: string;
+  temporaryPassword?: string;
+  password?: string;
+  createdAt?: string;
+}
+
+export interface ImportStudentsResponse {
+  results?: ImportedStudent[];
+  students?: ImportedStudent[];
+  created?: ImportedStudent[];
+  count?: number;
+  message?: string;
+  [key: string]: unknown;
 }

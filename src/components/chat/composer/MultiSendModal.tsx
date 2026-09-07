@@ -98,7 +98,6 @@ export function MultiSendModal({ isOpen, onClose, onSendMultiple }: MultiSendMod
       isOpen={isOpen}
       onClose={onClose}
       title="Multi-Message Batch Dispatch"
-      description="Queue several messages and send them concurrently in a single batch"
       maxWidth="lg"
     >
       <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">

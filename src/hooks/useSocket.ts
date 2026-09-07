@@ -144,10 +144,10 @@ export function useSocket() {
       queryClient.setQueryData(['conversations'], (oldData: unknown) => {
         if (!oldData) return { results: [conv], page: 1, limit: 50, totalPages: 1, totalResults: 1 };
         const data = oldData as { results: Conversation[] };
-        if (data.results.some((c) => c.id === conv.id)) return data;
+        const filtered = (data.results || []).filter((c) => c.id !== conv.id);
         return {
           ...data,
-          results: [conv, ...data.results],
+          results: [conv, ...filtered],
         };
       });
     });
@@ -157,9 +157,10 @@ export function useSocket() {
       queryClient.setQueryData(['conversations'], (oldData: unknown) => {
         if (!oldData) return { results: [conv], page: 1, limit: 50, totalPages: 1, totalResults: 1 };
         const data = oldData as { results: Conversation[] };
+        const filtered = (data.results || []).filter((c) => c.id !== conv.id);
         return {
           ...data,
-          results: [conv, ...data.results],
+          results: [conv, ...filtered],
         };
       });
     });

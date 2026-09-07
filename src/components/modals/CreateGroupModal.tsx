@@ -80,13 +80,12 @@ export function CreateGroupModal() {
       isOpen={isCreateGroupModalOpen}
       onClose={() => setCreateGroupModalOpen(false)}
       title="Create Staff Group Chat"
-      description="Create an internal discussion channel for teachers and agents"
       maxWidth="md"
     >
       <form onSubmit={handleCreate} className="space-y-4">
         <Input
           label="Group Name"
-          placeholder="e.g. Grade 10 Teachers / Science Dept"
+          placeholder="Group Name"
           value={groupName}
           onChange={(e) => setGroupName(e.target.value)}
           leftIcon={<Users className="w-4 h-4 text-[#00a884]" />}

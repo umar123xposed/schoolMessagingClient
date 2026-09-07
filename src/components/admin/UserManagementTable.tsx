@@ -10,11 +10,13 @@ import { Button } from '@/components/common/Button';
 import { User, UserRole } from '@/types';
 import { formatTableDate } from '@/lib/utils/formatters';
 import { Search, UserPlus, Trash2, Shield, UserCheck, GraduationCap, X } from 'lucide-react';
+import { useBatches } from '@/hooks/useBatches';
 
 export function UserManagementTable() {
   const queryClient = useQueryClient();
   const { setCreateUserModalOpen, addToast } = useUIStore();
   const { user: currentUser } = useAuthStore();
+  const { batchMap } = useBatches();
 
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
   const [search, setSearch] = useState('');
@@ -165,13 +167,18 @@ export function UserManagementTable() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {u.batchLabel ? (
-                        <span className="px-2 py-0.5 rounded bg-[#202c33] text-emerald-400 font-mono text-[11px] border border-[#2a3942]">
-                          {u.batchLabel}
-                        </span>
-                      ) : (
-                        <span className="text-[#8696a0]">—</span>
-                      )}
+                      {(() => {
+                        const batchName =
+                          (u.batchId && batchMap[u.batchId]?.name) ||
+                          u.batchLabel;
+                        return batchName ? (
+                          <span className="px-2 py-0.5 rounded bg-[#202c33] text-emerald-400 font-mono text-[11px] border border-[#2a3942]">
+                            {batchName}
+                          </span>
+                        ) : (
+                          <span className="text-[#8696a0]">—</span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-[#8696a0] whitespace-nowrap">
                       {formatTableDate(u.createdAt, u.id)}

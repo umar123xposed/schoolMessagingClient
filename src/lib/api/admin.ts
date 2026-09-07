@@ -7,14 +7,21 @@ export const adminApi = {
     return data;
   },
 
-  requestBatchDeletion: async (batchLabel: string): Promise<BatchDeletionJob> => {
-    const { data } = await apiClient.post<BatchDeletionJob>(`/admin/batches/${encodeURIComponent(batchLabel)}/delete`, {
-      confirmBatchLabel: batchLabel,
+  requestBatchDeletion: async (batchId: string, confirmName: string): Promise<BatchDeletionJob> => {
+    const { data } = await apiClient.delete<BatchDeletionJob>(`/batches/${batchId}`, {
+      data: { confirmName },
     });
     return data;
   },
 
-  getBatchDeletions: async (params?: { status?: string; batchLabel?: string }): Promise<PaginatedResult<BatchDeletionJob>> => {
+  getBatchDeletions: async (params?: {
+    status?: string;
+    batchId?: string;
+    batchLabel?: string;
+    sortBy?: string;
+    limit?: number;
+    page?: number;
+  }): Promise<PaginatedResult<BatchDeletionJob>> => {
     const { data } = await apiClient.get<PaginatedResult<BatchDeletionJob>>('/admin/batch-deletions', { params });
     return data;
   },

@@ -18,6 +18,8 @@ export function StorageStatsView() {
   });
 
   interface RawBatch {
+    batchId?: string | null;
+    batchName?: string;
     batchLabel?: string;
     _id?: string;
     studentCount?: number;
@@ -42,7 +44,8 @@ export function StorageStatsView() {
   }
 
   interface NormalizedBatch {
-    batchLabel: string;
+    batchId?: string | null;
+    batchName: string;
     studentCount: number;
     conversationCount: number;
     messageCount: number;
@@ -57,27 +60,33 @@ export function StorageStatsView() {
       (stats as unknown as { batches?: RawBatch[]; results?: RawBatch[] })?.results ||
       [];
 
-  const batches: NormalizedBatch[] = rawBatches.map((b: RawBatch) => ({
-    batchLabel: (b.batchLabel as string) || (b._id as string) || '(Unassigned)',
-    studentCount: Number(b.studentCount ?? b.students ?? 0) || 0,
-    conversationCount: Number(b.conversationCount ?? b.conversations ?? 0) || 0,
-    messageCount: Number(b.messageCount ?? b.messages ?? 0) || 0,
-    attachmentCount: Number(b.attachmentCount ?? b.attachments ?? 0) || 0,
-    totalSizeBytes: Number(
-      b.attachmentBytes ??
-      b.attachmentsBytes ??
-      b.totalSizeBytes ??
-      b.totalSize ??
-      b.totalBytes ??
-      b.sizeBytes ??
-      b.storageBytes ??
-      b.mediaBytes ??
-      b.size ??
-      b.storageSize ??
-      b.bytes ??
-      0
-    ) || 0,
-  }));
+  const batches: NormalizedBatch[] = rawBatches.map((b: RawBatch) => {
+    const batchName =
+      (b.batchName as string) || (b.batchLabel as string) || (b._id as string) || '(Unassigned)';
+    const batchId = (b.batchId as string) || (b._id as string) || null;
+    return {
+      batchId,
+      batchName,
+      studentCount: Number(b.studentCount ?? b.students ?? 0) || 0,
+      conversationCount: Number(b.conversationCount ?? b.conversations ?? 0) || 0,
+      messageCount: Number(b.messageCount ?? b.messages ?? 0) || 0,
+      attachmentCount: Number(b.attachmentCount ?? b.attachments ?? 0) || 0,
+      totalSizeBytes: Number(
+        b.attachmentBytes ??
+        b.attachmentsBytes ??
+        b.totalSizeBytes ??
+        b.totalSize ??
+        b.totalBytes ??
+        b.sizeBytes ??
+        b.storageBytes ??
+        b.mediaBytes ??
+        b.size ??
+        b.storageSize ??
+        b.bytes ??
+        0
+      ) || 0,
+    };
+  });
 
   // Aggregate batch totals as fallback
   const computedTotals = batches.reduce(
@@ -97,25 +106,41 @@ export function StorageStatsView() {
     }
   );
 
-  const statsObj = stats && !Array.isArray(stats) ? (stats as unknown as { totals?: Record<string, unknown> }) : null;
-  const totals = statsObj?.totals
+  const statsObj =
+    stats && !Array.isArray(stats)
+      ? (stats as unknown as { total?: Record<string, unknown>; totals?: Record<string, unknown> })
+      : null;
+  const rawTotal = statsObj?.total || statsObj?.totals;
+
+  const totals = rawTotal
     ? {
-        studentCount: Number(statsObj.totals.studentCount ?? statsObj.totals.students ?? computedTotals.studentCount) || computedTotals.studentCount,
-        conversationCount: Number(statsObj.totals.conversationCount ?? statsObj.totals.conversations ?? computedTotals.conversationCount) || computedTotals.conversationCount,
-        messageCount: Number(statsObj.totals.messageCount ?? statsObj.totals.messages ?? computedTotals.messageCount) || computedTotals.messageCount,
-        attachmentCount: Number(statsObj.totals.attachmentCount ?? statsObj.totals.attachments ?? computedTotals.attachmentCount) || computedTotals.attachmentCount,
-        totalSizeBytes: Number(
-          statsObj.totals.attachmentBytes ??
-          statsObj.totals.attachmentsBytes ??
-          statsObj.totals.totalSizeBytes ??
-          statsObj.totals.totalSize ??
-          statsObj.totals.totalBytes ??
-          statsObj.totals.sizeBytes ??
-          statsObj.totals.storageBytes ??
-          statsObj.totals.mediaBytes ??
-          statsObj.totals.size ??
-          computedTotals.totalSizeBytes
-        ) || computedTotals.totalSizeBytes,
+        studentCount:
+          Number(rawTotal.studentCount ?? rawTotal.students ?? computedTotals.studentCount) ||
+          computedTotals.studentCount,
+        conversationCount:
+          Number(
+            rawTotal.conversationCount ?? rawTotal.conversations ?? computedTotals.conversationCount
+          ) || computedTotals.conversationCount,
+        messageCount:
+          Number(rawTotal.messageCount ?? rawTotal.messages ?? computedTotals.messageCount) ||
+          computedTotals.messageCount,
+        attachmentCount:
+          Number(
+            rawTotal.attachmentCount ?? rawTotal.attachments ?? computedTotals.attachmentCount
+          ) || computedTotals.attachmentCount,
+        totalSizeBytes:
+          Number(
+            rawTotal.attachmentBytes ??
+            rawTotal.attachmentsBytes ??
+            rawTotal.totalSizeBytes ??
+            rawTotal.totalSize ??
+            rawTotal.totalBytes ??
+            rawTotal.sizeBytes ??
+            rawTotal.storageBytes ??
+            rawTotal.mediaBytes ??
+            rawTotal.size ??
+            computedTotals.totalSizeBytes
+          ) || computedTotals.totalSizeBytes,
       }
     : computedTotals;
 
@@ -210,32 +235,40 @@ export function StorageStatsView() {
                   </td>
                 </tr>
               ) : (
-                batches.map((b) => (
-                  <tr key={b.batchLabel} className="hover:bg-[#182229] transition-colors">
-                    <td className="px-5 py-3.5 font-semibold text-emerald-400 font-mono">
-                      {b.batchLabel || '(Unassigned)'}
-                    </td>
-                    <td className="px-5 py-3.5">{b.studentCount}</td>
-                    <td className="px-5 py-3.5">{b.conversationCount}</td>
-                    <td className="px-5 py-3.5">{b.messageCount}</td>
-                    <td className="px-5 py-3.5">{b.attachmentCount}</td>
-                    <td className="px-5 py-3.5 font-medium text-[#e9edef]">
-                      {formatFileSize(b.totalSizeBytes)}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      {b.batchLabel && (
-                        <button
-                          type="button"
-                          onClick={() => setBatchDeleteModalOpen(true, b.batchLabel)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-medium transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Delete Batch</span>
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                batches.map((b) => {
+                  const canDelete =
+                    b.batchId &&
+                    b.batchName !== '(Unassigned)' &&
+                    b.batchName.toLowerCase() !== 'unassigned';
+                  return (
+                    <tr key={b.batchId || b.batchName} className="hover:bg-[#182229] transition-colors">
+                      <td className="px-5 py-3.5 font-semibold text-emerald-400 font-mono">
+                        {b.batchName}
+                      </td>
+                      <td className="px-5 py-3.5">{b.studentCount}</td>
+                      <td className="px-5 py-3.5">{b.conversationCount}</td>
+                      <td className="px-5 py-3.5">{b.messageCount}</td>
+                      <td className="px-5 py-3.5">{b.attachmentCount}</td>
+                      <td className="px-5 py-3.5 font-medium text-[#e9edef]">
+                        {formatFileSize(b.totalSizeBytes)}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setBatchDeleteModalOpen(true, { id: b.batchId!, name: b.batchName })
+                            }
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-medium transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Batch</span>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

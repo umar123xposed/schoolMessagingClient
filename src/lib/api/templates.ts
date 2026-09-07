@@ -4,13 +4,11 @@ import { Template, PaginatedResult } from '@/types';
 export interface CreateTemplatePayload {
   shortcut: string;
   content: string;
-  isShared?: boolean;
 }
 
 export interface UpdateTemplatePayload {
   shortcut?: string;
   content?: string;
-  isShared?: boolean;
 }
 
 export const templatesApi = {

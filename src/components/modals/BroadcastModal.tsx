@@ -100,7 +100,6 @@ export function BroadcastModal() {
       isOpen={isBroadcastModalOpen}
       onClose={() => setBroadcastModalOpen(false)}
       title="Broadcast Announcement"
-      description="Send a message to multiple student chats simultaneously"
       maxWidth="lg"
     >
       <form onSubmit={handleBroadcast} className="space-y-4">

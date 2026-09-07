@@ -8,14 +8,20 @@ export interface ToastMessage {
   message: string;
 }
 
+export interface BatchDeletionTarget {
+  id: string;
+  name: string;
+}
+
 interface UIState {
   isCreateGroupModalOpen: boolean;
   isBroadcastModalOpen: boolean;
   isLabelManagerModalOpen: boolean;
   isTemplateManagerModalOpen: boolean;
   isCreateUserModalOpen: boolean;
+  createUserModalTab: 'single' | 'import';
   isBatchDeleteModalOpen: boolean;
-  selectedBatchForDeletion: string | null;
+  selectedBatchForDeletion: BatchDeletionTarget | null;
   mediaPreview: {
     isOpen: boolean;
     attachment: Attachment | null;
@@ -26,8 +32,8 @@ interface UIState {
   setBroadcastModalOpen: (open: boolean) => void;
   setLabelManagerModalOpen: (open: boolean) => void;
   setTemplateManagerModalOpen: (open: boolean) => void;
-  setCreateUserModalOpen: (open: boolean) => void;
-  setBatchDeleteModalOpen: (open: boolean, batchLabel?: string) => void;
+  setCreateUserModalOpen: (open: boolean, initialTab?: 'single' | 'import') => void;
+  setBatchDeleteModalOpen: (open: boolean, batch?: BatchDeletionTarget | string) => void;
   openMediaPreview: (attachment: Attachment) => void;
   closeMediaPreview: () => void;
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
@@ -40,6 +46,7 @@ export const useUIStore = create<UIState>((set) => ({
   isLabelManagerModalOpen: false,
   isTemplateManagerModalOpen: false,
   isCreateUserModalOpen: false,
+  createUserModalTab: 'single',
   isBatchDeleteModalOpen: false,
   selectedBatchForDeletion: null,
   mediaPreview: {
@@ -52,9 +59,22 @@ export const useUIStore = create<UIState>((set) => ({
   setBroadcastModalOpen: (open) => set({ isBroadcastModalOpen: open }),
   setLabelManagerModalOpen: (open) => set({ isLabelManagerModalOpen: open }),
   setTemplateManagerModalOpen: (open) => set({ isTemplateManagerModalOpen: open }),
-  setCreateUserModalOpen: (open) => set({ isCreateUserModalOpen: open }),
-  setBatchDeleteModalOpen: (open, batchLabel) =>
-    set({ isBatchDeleteModalOpen: open, selectedBatchForDeletion: batchLabel || null }),
+  setCreateUserModalOpen: (open, initialTab) =>
+    set({
+      isCreateUserModalOpen: open,
+      createUserModalTab: initialTab || (open ? 'single' : 'single'),
+    }),
+  setBatchDeleteModalOpen: (open, batch) => {
+    let target: BatchDeletionTarget | null = null;
+    if (batch) {
+      if (typeof batch === 'string') {
+        target = { id: batch, name: batch };
+      } else {
+        target = batch;
+      }
+    }
+    set({ isBatchDeleteModalOpen: open, selectedBatchForDeletion: target });
+  },
 
   openMediaPreview: (attachment) =>
     set({
