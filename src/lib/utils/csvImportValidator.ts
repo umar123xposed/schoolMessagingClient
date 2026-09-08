@@ -43,6 +43,57 @@ export function parseCsvLine(line: string): string[] {
 }
 
 /**
+ * Cleans Excel-exported formula wrappers (e.g. ="...") or single-quote escapes ('...)
+ */
+export function cleanCsvField(val: string): string {
+  let s = (val || '').trim();
+  if (s.startsWith('=')) {
+    s = s.slice(1).trim();
+    if (s.startsWith('"') && s.endsWith('"')) {
+      s = s.slice(1, -1).trim();
+    }
+  }
+  if (s.startsWith("'")) {
+    s = s.slice(1).trim();
+  }
+  return s;
+}
+
+const SCIENTIFIC_NOTATION_REGEX = /^[+-]?\d+(?:\.\d+)?[eE][+-]?\d+$/i;
+
+/**
+ * Checks if a value is in scientific notation (e.g. 9.23001E+11 created by Excel).
+ * Detects if Excel truncated digits by checking if exponent adds trailing zeros.
+ */
+export function parseScientificPhone(val: string): { isScientific: boolean; isTruncated: boolean; value: string } {
+  const trimmed = val.trim();
+  if (!SCIENTIFIC_NOTATION_REGEX.test(trimmed)) {
+    return { isScientific: false, isTruncated: false, value: trimmed };
+  }
+
+  const num = Number(trimmed);
+  if (isNaN(num) || !isFinite(num)) {
+    return { isScientific: true, isTruncated: true, value: trimmed };
+  }
+
+  const integerStr = BigInt(Math.round(num)).toString();
+  const parts = trimmed.split(/[eE]/i);
+  const mantissa = parts[0].replace(/^[+-]/, '');
+  const exponent = parseInt(parts[1], 10);
+  const decimalDigits = mantissa.includes('.') ? mantissa.split('.')[1].length : 0;
+  const zerosAdded = exponent - decimalDigits;
+
+  // If Excel added 3 or more trailing zeros, the original digits were truncated by Excel
+  const isTruncated = zerosAdded >= 3;
+
+  return {
+    isScientific: true,
+    isTruncated,
+    value: integerStr,
+  };
+}
+
+/**
  * Validates a student import CSV according to backend rules:
  * - Header must be exactly phoneNumber, name, and optionally email (case-insensitive, any order).
  * - No missing required columns, duplicate headers, or unrecognized columns.
@@ -155,34 +206,53 @@ export function validateStudentsCsv(csvContent: string): CsvValidationResult {
     // Skip empty lines
     if (rowText === '') continue;
 
-    const cells = parseCsvLine(lines[i].text);
+    const rawCells = parseCsvLine(lines[i].text);
+    const cells = rawCells.map(cleanCsvField);
 
     const name = (cells[nameIndex] || '').trim();
-    const phoneNumber = (cells[phoneIndex] || '').trim();
+    const rawPhone = (cells[phoneIndex] || '').trim();
     const email = emailIndex !== -1 ? (cells[emailIndex] || '').trim() : '';
+
+    // Check for Excel Scientific Notation (e.g. 9.23001E+11)
+    const sci = parseScientificPhone(rawPhone);
+    let phoneNumber = '';
+
+    if (sci.isScientific) {
+      if (sci.isTruncated) {
+        errors.push(
+          `Row ${rowNumber}: Phone number "${rawPhone}" was converted to scientific notation by Microsoft Excel and lost digits. In Excel: select the phone column > Right Click > Format Cells > choose "Text" (or Number with 0 decimals) before entering numbers.`
+        );
+      } else {
+        phoneNumber = `+${sci.value}`;
+      }
+    } else {
+      let clean = rawPhone.replace(/[\s()-]/g, '');
+      if (clean && !clean.startsWith('+')) {
+        clean = `+${clean}`;
+      }
+      phoneNumber = clean;
+    }
 
     // Validate Name
     if (!name) {
       errors.push(`Row ${rowNumber}: Name is required`);
     }
 
-    // Validate Phone (Must include + and country code)
-    if (!phoneNumber) {
+    // Validate Phone (7-15 digits)
+    if (!rawPhone) {
       errors.push(`Row ${rowNumber}: Phone number is required`);
-    } else if (!phoneNumber.startsWith('+')) {
-      errors.push(
-        `Row ${rowNumber}: Phone number "${phoneNumber}" must start with "+" and country code (e.g. +14155552671)`
-      );
+    } else if (sci.isScientific && sci.isTruncated) {
+      // Error already pushed above with clear Excel guidance
     } else if (!phoneRegex.test(phoneNumber)) {
       errors.push(
-        `Row ${rowNumber}: Invalid phone number "${phoneNumber}". Must start with "+" and have 7-15 digits (e.g. +14155552671)`
+        `Row ${rowNumber}: Invalid phone number "${rawPhone}". Must contain 7-15 digits.`
       );
     } else {
       // In-file duplicate check
       const prevRow = seenPhones.get(phoneNumber);
       if (prevRow) {
         errors.push(
-          `Row ${rowNumber}: Duplicate phone number "${phoneNumber}" in file (already used on row ${prevRow})`
+          `Row ${rowNumber}: Duplicate phone number "${rawPhone}" in file (already used on row ${prevRow})`
         );
       } else {
         seenPhones.set(phoneNumber, rowNumber);
@@ -223,11 +293,61 @@ export function validateStudentsCsv(csvContent: string): CsvValidationResult {
 }
 
 /**
+ * Normalizes CSV content so that every phone number column value starts with '+'.
+ * Also cleans Excel formula wrappers (="...") and expands exact scientific notation.
+ */
+export function normalizeCsvContentWithPhonePlus(csvContent: string): string {
+  let cleanContent = csvContent;
+  let hasBom = false;
+  if (cleanContent.charCodeAt(0) === 0xfeff) {
+    hasBom = true;
+    cleanContent = cleanContent.slice(1);
+  }
+
+  const lines = cleanContent.split(/\r?\n/);
+  if (lines.length <= 1) return csvContent;
+
+  const rawHeaders = parseCsvLine(lines[0]);
+  const normalizedHeaders = rawHeaders.map((h) => cleanCsvField(h).toLowerCase());
+  const phoneIndex = normalizedHeaders.indexOf('phonenumber');
+  if (phoneIndex === -1) return csvContent;
+
+  const newLines: string[] = [lines[0]];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) {
+      newLines.push(line);
+      continue;
+    }
+
+    const cells = parseCsvLine(line).map(cleanCsvField);
+    if (cells.length > phoneIndex) {
+      const raw = cells[phoneIndex];
+      const sci = parseScientificPhone(raw);
+      const phone = sci.isScientific && !sci.isTruncated ? sci.value : raw.replace(/[\s()-]/g, '');
+      if (phone && !phone.startsWith('+')) {
+        cells[phoneIndex] = `+${phone}`;
+      } else {
+        cells[phoneIndex] = phone;
+      }
+    }
+    const formattedLine = cells
+      .map((c) => (c.includes(',') || c.includes('"') || c.includes('\n') ? `"${c.replace(/"/g, '""')}"` : c))
+      .join(',');
+    newLines.push(formattedLine);
+  }
+
+  const result = newLines.join('\n');
+  return hasBom ? '\ufeff' + result : result;
+}
+
+/**
  * Returns sample CSV text for admins to download as template.
  */
 export function generateSampleCsv(): string {
   return `phoneNumber,name,email
-+14155552671,Alice Smith (Must include +CountryCode),alice@example.com
-+447911123456,Bob Jones (e.g. +1 for US or +44 for UK),bob@example.com
-+923001234567,Charlie Brown (Always start with +),`;
++14155552671,Alice Smith,alice@example.com
++447911123456,Bob Jones,bob@example.com
++923001234567,Charlie Brown,`;
 }

@@ -20,6 +20,7 @@ interface UIState {
   isTemplateManagerModalOpen: boolean;
   isCreateUserModalOpen: boolean;
   createUserModalTab: 'single' | 'import';
+  isChangePasswordModalOpen: boolean;
   isBatchDeleteModalOpen: boolean;
   selectedBatchForDeletion: BatchDeletionTarget | null;
   mediaPreview: {
@@ -33,6 +34,7 @@ interface UIState {
   setLabelManagerModalOpen: (open: boolean) => void;
   setTemplateManagerModalOpen: (open: boolean) => void;
   setCreateUserModalOpen: (open: boolean, initialTab?: 'single' | 'import') => void;
+  setChangePasswordModalOpen: (open: boolean) => void;
   setBatchDeleteModalOpen: (open: boolean, batch?: BatchDeletionTarget | string) => void;
   openMediaPreview: (attachment: Attachment) => void;
   closeMediaPreview: () => void;
@@ -47,6 +49,7 @@ export const useUIStore = create<UIState>((set) => ({
   isTemplateManagerModalOpen: false,
   isCreateUserModalOpen: false,
   createUserModalTab: 'single',
+  isChangePasswordModalOpen: false,
   isBatchDeleteModalOpen: false,
   selectedBatchForDeletion: null,
   mediaPreview: {
@@ -64,6 +67,7 @@ export const useUIStore = create<UIState>((set) => ({
       isCreateUserModalOpen: open,
       createUserModalTab: initialTab || (open ? 'single' : 'single'),
     }),
+  setChangePasswordModalOpen: (open) => set({ isChangePasswordModalOpen: open }),
   setBatchDeleteModalOpen: (open, batch) => {
     let target: BatchDeletionTarget | null = null;
     if (batch) {

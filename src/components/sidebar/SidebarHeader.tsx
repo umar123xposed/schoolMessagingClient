@@ -14,7 +14,9 @@ import {
   Shield,
   LogOut,
   MoreVertical,
+  KeyRound,
 } from 'lucide-react';
+import { capitalizeName } from '@/lib/utils/formatters';
 
 export function SidebarHeader() {
   const router = useRouter();
@@ -24,6 +26,7 @@ export function SidebarHeader() {
     setBroadcastModalOpen,
     setLabelManagerModalOpen,
     setTemplateManagerModalOpen,
+    setChangePasswordModalOpen,
   } = useUIStore();
 
   const isSuperAdmin = user?.role === 'super_admin';
@@ -81,6 +84,13 @@ export function SidebarHeader() {
   if (menuItems.length > 0) menuItems.push('divider');
 
   menuItems.push({
+    id: 'change-password',
+    label: 'Change Password',
+    icon: <KeyRound className="w-4 h-4 text-emerald-400" />,
+    onClick: () => setChangePasswordModalOpen(true),
+  });
+
+  menuItems.push({
     id: 'logout',
     label: 'Sign Out',
     icon: <LogOut className="w-4 h-4" />,
@@ -89,12 +99,12 @@ export function SidebarHeader() {
   });
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-[#202c33] border-b border-[#222e35]">
+    <div className="h-[60px] flex items-center justify-between px-4 bg-[#202c33] border-b border-[#222e35] flex-shrink-0">
       {/* Current User Info */}
       <div className="flex items-center gap-3 min-w-0">
-        <Avatar name={user?.name} isOnline={true} showOnlineStatus={isAgentOrAdmin} size="md" />
+        <Avatar name={capitalizeName(user?.name)} isOnline={true} showOnlineStatus={isAgentOrAdmin} size="md" />
         <div className="min-w-0 text-left">
-          <h1 className="text-sm font-semibold text-[#e9edef] truncate">{user?.name || 'Staff User'}</h1>
+          <h1 className="text-sm font-semibold text-[#e9edef] truncate">{capitalizeName(user?.name) || 'Staff User'}</h1>
           <span className="text-[11px] font-medium text-[#00a884] capitalize">
             {user?.role?.replace('_', ' ')}
           </span>

@@ -69,8 +69,8 @@ export function ChatHeader({ conversation, onBackToSidebar }: ChatHeaderProps) {
   ];
 
   return (
-    <div className="relative bg-[#202c33] border-b border-[#222e35] z-30">
-      <div className="flex items-center justify-between px-4 py-2.5">
+    <div className="relative bg-[#202c33] border-b border-[#222e35] z-30 flex-shrink-0">
+      <div className="h-[60px] flex items-center justify-between px-4">
         {/* Left Side: Back button on mobile + Avatar + Title Info */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {/* Mobile Back Button */}

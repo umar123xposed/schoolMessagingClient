@@ -31,6 +31,7 @@ import { useBatches } from '@/hooks/useBatches';
 import {
   validateStudentsCsv,
   generateSampleCsv,
+  normalizeCsvContentWithPhonePlus,
   CsvValidationResult,
 } from '@/lib/utils/csvImportValidator';
 
@@ -137,13 +138,12 @@ export function CreateUserModal() {
     e.preventDefault();
     setError(null);
 
-    const phoneClean = phoneNumber.trim();
+    let phoneClean = phoneNumber.trim().replace(/[\s()-]/g, '');
     if (!phoneClean.startsWith('+')) {
-      setError('Phone number must start with "+" and country code (e.g. +14155552671)');
-      return;
+      phoneClean = `+${phoneClean}`;
     }
     if (!/^\+[0-9]{7,15}$/.test(phoneClean)) {
-      setError('Phone number must contain 7-15 digits after "+" (e.g. +14155552671)');
+      setError('Please enter a valid phone number (7-15 digits)');
       return;
     }
 
@@ -267,9 +267,15 @@ export function CreateUserModal() {
     }
 
     try {
+      // Normalize CSV content so all phone numbers start with '+'
+      const rawText = await csvFile.text();
+      const normalizedText = normalizeCsvContentWithPhonePlus(rawText);
+      const normalizedBlob = new Blob([normalizedText], { type: 'text/csv' });
+      const uploadFile = new File([normalizedBlob], csvFile.name, { type: 'text/csv' });
+
       const response = await importMutation.mutateAsync({
         batchId: finalBatchId,
-        file: csvFile,
+        file: uploadFile,
       });
 
       const students: ImportedStudent[] = Array.isArray(response)
@@ -540,7 +546,7 @@ export function CreateUserModal() {
                         Choose CSV file or drag and drop
                       </p>
                       <p className="text-[11px] text-[#8696a0] mt-0.5">
-                        Headers: <span className="text-[#00a884] font-mono">phoneNumber, name</span> (optional: <span className="text-[#00a884] font-mono">email</span>) • Phone must start with <span className="text-[#00a884] font-mono">+CountryCode</span>
+                        Headers: <span className="text-[#00a884] font-mono">phoneNumber, name</span> (optional: <span className="text-[#00a884] font-mono">email</span>)
                       </p>
                     </div>
                   ) : (
@@ -566,6 +572,13 @@ export function CreateUserModal() {
                       </button>
                     </div>
                   )}
+
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[#202c33]/70 border border-[#2a3942] text-[11px] text-[#8696a0]">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <span>
+                      <strong className="text-[#e9edef]">Excel Tip:</strong> In Excel, format the <code className="text-[#00a884]">phoneNumber</code> column as <strong className="text-[#e9edef]">Text</strong> (or Number with 0 decimals) before typing numbers to prevent Excel from corrupting them into scientific notation (e.g. <code className="text-rose-400">9.23E+11</code>).
+                    </span>
+                  </div>
                 </div>
 
                 {/* Validation Errors */}

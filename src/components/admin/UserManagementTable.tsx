@@ -8,7 +8,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/common/Button';
 import { User, UserRole } from '@/types';
-import { formatTableDate } from '@/lib/utils/formatters';
+import { formatTableDate, capitalizeName } from '@/lib/utils/formatters';
 import { Search, UserPlus, Trash2, Shield, UserCheck, GraduationCap, X } from 'lucide-react';
 import { useBatches } from '@/hooks/useBatches';
 
@@ -143,9 +143,9 @@ export function UserManagementTable() {
                   <tr key={u.id} className="hover:bg-[#182229] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <Avatar name={u.name} size="sm" />
+                        <Avatar name={capitalizeName(u.name)} size="sm" />
                         <div>
-                          <p className="font-semibold text-[#e9edef]">{u.name}</p>
+                          <p className="font-semibold text-[#e9edef]">{capitalizeName(u.name)}</p>
                           {u.email && <p className="text-[11px] text-[#8696a0]">{u.email}</p>}
                         </div>
                       </div>

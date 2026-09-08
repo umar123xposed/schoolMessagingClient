@@ -168,6 +168,18 @@ export function formatDuration(seconds?: number | null): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+export function capitalizeName(name?: string | null): string {
+  if (!name) return '';
+  const trimmed = name.trim();
+  if (!trimmed) return '';
+  // Don't format raw phone numbers or numeric identifiers
+  if (trimmed.startsWith('+') || /^\d/.test(trimmed)) return trimmed;
+  return trimmed
+    .split(/\s+/)
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : ''))
+    .join(' ');
+}
+
 export function formatPhoneNumber(phone: string): string {
   if (!phone) return '';
   // Clean phone
