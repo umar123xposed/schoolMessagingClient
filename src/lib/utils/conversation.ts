@@ -1,4 +1,5 @@
 import { Conversation, User } from '@/types';
+import { capitalizeName } from '@/lib/utils/formatters';
 
 export interface ResolvedConversationDetails {
   title: string;
@@ -21,7 +22,7 @@ export function resolveConversationDetails(
 
   // For agent group chats
   if (isGroup) {
-    const title = conversation.name || 'Group Chat';
+    const title = capitalizeName(conversation.name) || 'Group Chat';
     const participantCount = Array.isArray(conversation.participantIds)
       ? conversation.participantIds.length
       : 0;
@@ -69,7 +70,8 @@ export function resolveConversationDetails(
     }
   }
 
-  const name = studentUser?.name || (conversation.name && !conversation.name.toLowerCase().includes('support') ? conversation.name : undefined);
+  const rawName = studentUser?.name || (conversation.name && !conversation.name.toLowerCase().includes('support') ? conversation.name : undefined);
+  const name = rawName ? capitalizeName(rawName) : undefined;
   const phoneNumber = studentUser?.phoneNumber;
   const batchId = studentUser?.batchId;
   const batchLabel =
@@ -83,7 +85,7 @@ export function resolveConversationDetails(
   let title = name || phoneNumber;
   if (!title) {
     if (conversation.name && !conversation.name.toLowerCase().includes('support')) {
-      title = conversation.name;
+      title = capitalizeName(conversation.name);
     } else if (typeof conversation.studentId === 'string' && conversation.studentId.length > 0) {
       title = `Student (${conversation.studentId.slice(-4)})`;
     } else {

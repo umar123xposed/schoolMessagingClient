@@ -44,27 +44,44 @@ export function ForwardMessageModal({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'students' | 'groups'>('all');
   const [sendToAll, setSendToAll] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filter only student support conversations (since broadcasts target students)
-  const studentConversations = useMemo(() => {
-    return conversations.filter((c) => c.type === 'student_support');
+  // Available conversations (both student support and staff groups)
+  const availableConversations = useMemo(() => {
+    return conversations.filter((c) => c.type === 'student_support' || c.type === 'agent_group');
   }, [conversations]);
 
-  // Filter conversations by user search
+  const studentCount = useMemo(
+    () => availableConversations.filter((c) => c.type === 'student_support').length,
+    [availableConversations]
+  );
+  const groupCount = useMemo(
+    () => availableConversations.filter((c) => c.type === 'agent_group').length,
+    [availableConversations]
+  );
+
+  // Filter conversations by category and search query
   const filteredConversations = useMemo(() => {
-    if (!searchQuery.trim()) return studentConversations;
+    let list = availableConversations;
+    if (categoryFilter === 'students') {
+      list = list.filter((c) => c.type === 'student_support');
+    } else if (categoryFilter === 'groups') {
+      list = list.filter((c) => c.type === 'agent_group');
+    }
+
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();
 
-    return studentConversations.filter((c) => {
+    return list.filter((c) => {
       const details = resolveConversationDetails(c, user, userMap);
       const nameMatch = details.title.toLowerCase().includes(q);
       const phoneMatch = details.phoneNumber?.toLowerCase().includes(q);
       const batchMatch = details.batchLabel?.toLowerCase().includes(q);
       return nameMatch || phoneMatch || batchMatch;
     });
-  }, [studentConversations, searchQuery, user, userMap]);
+  }, [availableConversations, categoryFilter, searchQuery, user, userMap]);
 
   const handleToggleSelect = (convId: string) => {
     setSelectedIds((prev) =>
@@ -89,7 +106,7 @@ export function ForwardMessageModal({
       addToast({
         type: 'warning',
         title: 'No recipients selected',
-        message: 'Please select at least one student or choose "Send to all students".',
+        message: 'Please select at least one chat or choose "Broadcast to All Students".',
       });
       return;
     }
@@ -110,17 +127,21 @@ export function ForwardMessageModal({
           message: 'Successfully broadcasted to all students!',
         });
       } else {
-        await messagesApi.broadcastMessage({
-          contentType: message.contentType,
-          text: message.text,
-          attachment: message.attachment,
-          targetConversationIds: selectedIds,
-        });
+        // Send to each selected conversation (supports both agent_group and student_support)
+        await Promise.all(
+          selectedIds.map((id) =>
+            messagesApi.sendMessage(id, {
+              contentType: message.contentType,
+              text: message.text,
+              attachment: message.attachment,
+            })
+          )
+        );
         soundEffects.playSent();
         addToast({
           type: 'success',
           title: 'Message forwarded',
-          message: `Successfully forwarded to ${selectedIds.length} student${selectedIds.length === 1 ? '' : 's'}.`,
+          message: `Successfully forwarded to ${selectedIds.length} chat${selectedIds.length === 1 ? '' : 's'}.`,
         });
       }
 
@@ -213,6 +234,43 @@ export function ForwardMessageModal({
 
         {!sendToAll && (
           <>
+            {/* Category Filter Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+              <button
+                type="button"
+                onClick={() => setCategoryFilter('all')}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                  categoryFilter === 'all'
+                    ? 'bg-[#00a884] text-white'
+                    : 'bg-[#202c33] text-[#8696a0] hover:text-[#e9edef]'
+                }`}
+              >
+                All ({availableConversations.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCategoryFilter('students')}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                  categoryFilter === 'students'
+                    ? 'bg-[#00a884] text-white'
+                    : 'bg-[#202c33] text-[#8696a0] hover:text-[#e9edef]'
+                }`}
+              >
+                Students ({studentCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCategoryFilter('groups')}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                  categoryFilter === 'groups'
+                    ? 'bg-[#00a884] text-white'
+                    : 'bg-[#202c33] text-[#8696a0] hover:text-[#e9edef]'
+                }`}
+              >
+                Staff Groups ({groupCount})
+              </button>
+            </div>
+
             {/* Search Input */}
             <div className="relative">
               <Search className="w-4 h-4 text-[#8696a0] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -220,15 +278,15 @@ export function ForwardMessageModal({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search students by name, phone or cohort..."
-                className="w-full bg-[#202c33] text-[#e9edef] text-sm pl-10 pr-4 py-2.5 rounded-xl border border-transparent focus:border-[#00a884] focus:outline-none placeholder:text-[#8696a0]"
+                placeholder="Search chats by name, phone or group..."
+                className="w-full bg-[#202c33] text-[#e9edef] text-sm pl-10 pr-4 py-2 rounded-xl border border-transparent focus:border-[#00a884] focus:outline-none placeholder:text-[#8696a0]"
               />
             </div>
 
             {/* List Header / Select All */}
             <div className="flex items-center justify-between text-xs text-[#8696a0] px-1">
               <span>
-                {filteredConversations.length} student
+                {filteredConversations.length} conversation
                 {filteredConversations.length === 1 ? '' : 's'} found
               </span>
               <button
@@ -246,7 +304,7 @@ export function ForwardMessageModal({
             <div className="flex-1 max-h-56 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
               {filteredConversations.length === 0 ? (
                 <div className="py-8 text-center text-[#8696a0] text-sm">
-                  No matching students found
+                  No matching chats found
                 </div>
               ) : (
                 filteredConversations.map((conv) => {
@@ -264,13 +322,26 @@ export function ForwardMessageModal({
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <Avatar name={details.avatarName} size="sm" />
+                        <Avatar
+                          name={details.avatarName}
+                          isGroup={details.isGroup}
+                          size="sm"
+                        />
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-[#e9edef] truncate">
-                            {details.title}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium text-[#e9edef] truncate">
+                              {details.title}
+                            </p>
+                            {details.isGroup && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-semibold flex-shrink-0">
+                                Group
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-[#8696a0] truncate">
-                            {details.phoneNumber || 'Student'}
+                            {details.isGroup
+                              ? details.subtitle || 'Staff Discussion Group'
+                              : details.phoneNumber || 'Student'}
                             {details.batchLabel ? ` • Cohort: ${details.batchLabel}` : ''}
                           </p>
                         </div>

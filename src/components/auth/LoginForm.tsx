@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUIStore } from '@/stores/useUIStore';
 import { Button } from '@/components/common/Button';
@@ -100,6 +101,15 @@ export function LoginForm() {
             required
             autoComplete="current-password"
           />
+
+          <div className="flex items-center justify-end -mt-1">
+            <Link
+              href="/reset-password"
+              className="text-xs text-[#00a884] hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
 
           {error && (
             <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">

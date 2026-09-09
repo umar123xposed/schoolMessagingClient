@@ -9,6 +9,7 @@ import { BroadcastModal } from '@/components/modals/BroadcastModal';
 import { LabelManagerModal } from '@/components/modals/LabelManagerModal';
 import { TemplateManagerModal } from '@/components/modals/TemplateManagerModal';
 import { MediaViewerModal } from '@/components/modals/MediaViewerModal';
+import { ChangePasswordModal } from '@/components/modals/ChangePasswordModal';
 import { CreateUserModal } from '@/components/admin/CreateUserModal';
 import { BatchDeleteConfirmModal } from '@/components/admin/BatchDeleteConfirmModal';
 
@@ -46,6 +47,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <LabelManagerModal />
       <TemplateManagerModal />
       <MediaViewerModal />
+      <ChangePasswordModal />
       <CreateUserModal />
       <BatchDeleteConfirmModal />
     </QueryClientProvider>
